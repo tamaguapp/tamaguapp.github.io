@@ -19,7 +19,7 @@
   button{font-family:inherit;cursor:pointer}
   .app{max-width:560px;margin:0 auto;padding:12px 12px 40px}
   .top{display:flex;align-items:center;gap:8px;margin-bottom:10px}
-  .logo{font-weight:800;font-size:20px;letter-spacing:.5px;display:flex;align-items:center;gap:8px}
+  .logo{font-weight:800;font-size:18px;white-space:nowrap;letter-spacing:.5px;display:flex;align-items:center;gap:8px}
   .logo i{display:inline-block;width:14px;height:14px;background:var(--gold);box-shadow:4px 4px 0 #ff8fa3, -4px 4px 0 #7bc96f;margin-inline-end:6px}
   .spacer{flex:1}
   .pill{font-size:12px;background:var(--card);border:1px solid var(--line);padding:5px 10px;border-radius:99px;color:var(--muted);white-space:nowrap}
@@ -38,6 +38,13 @@
   .tag.off{opacity:.7}.tag.off .dot{background:#6d6587;box-shadow:none}
   .tag.me{background:rgba(255,209,102,.95);color:#2b2140;font-weight:600}
   .tag .own{opacity:.75}
+  #mapLabels{position:absolute;inset:0;pointer-events:none}
+  .place{position:absolute;transform:translate(-50%,-100%);pointer-events:auto;background:rgba(18,12,34,.88);color:#fff;border:2px solid var(--shadow);
+    border-radius:10px;padding:3px 9px;font-size:12px;font-weight:600;display:flex;gap:5px;align-items:center;white-space:nowrap;box-shadow:0 3px 0 var(--shadow)}
+  .place .pc{background:var(--gold);color:#2b2140;border-radius:99px;padding:0 6px;font-size:11px;font-weight:800}
+  .place.locked{opacity:.8}.place.locked .pc{background:#6d6587;color:#fff}
+  #eggBar{background:linear-gradient(90deg,#ffb84d,#ff6b7a)!important}
+  #warmBtn:disabled{background:#5a4d78;color:#cfc5e8}
   .status-line{font-size:11px;color:var(--muted);margin:8px 2px 0;min-height:14px}
 
   .card{background:var(--card);border:2px solid var(--line);border-radius:12px;padding:12px;margin-top:14px}
@@ -109,6 +116,7 @@
   <div class="top">
     <div class="logo"><i></i>חצר פיקסל</div>
     <div class="spacer"></div>
+    <button class="icon-btn" id="backMap" style="display:none">🗺️ מפה</button>
     <div class="pill" id="onlinePill">👥 <b>1</b> מחוברים</div>
     <button class="icon-btn" id="openPanel">⚙️ פאנל</button>
   </div>
@@ -116,6 +124,7 @@
   <div class="stage">
     <canvas id="scene"></canvas>
     <div id="tags"></div>
+    <div id="mapLabels"></div>
   </div>
   <div class="status-line" id="statusLine">מתחבר…</div>
 
@@ -128,9 +137,18 @@
       </div>
       <div class="mood" id="meMood"></div>
     </div>
+    <div id="eggBox" style="display:none">
+      <div class="bar-l" style="margin-top:12px"><span>התקדמות הבקיעה</span><span id="eggEta"></span></div>
+      <div class="bar"><i id="eggBar"></i></div>
+      <button class="big" id="warmBtn">🔥 חימום</button>
+      <button class="mini" id="goNest" style="margin-top:8px;width:100%">🥚 לחדר הקינון</button>
+      <div class="hint">בלי חימום הביצה בוקעת תוך 5 דקות. כל חימום מקצר את הזמן, ואם מחממים עד הסוף היא בוקעת תוך 2 דקות. מי שנמצא בחדר הקינון רואה אותך מחמם.</div>
+    </div>
+    <div id="petBox">
     <div class="bars" id="bars"></div>
     <div class="actions" id="actions"></div>
     <div class="hint">כל מדד יורד לאט עם הזמן. אחרי כל פעולה יש זמן המתנה, אז עדיף לחזור כמה פעמים ביום ולא ללחוץ ברצף. מי שמחובר עכשיו רואה את היצור שלך עושה את הפעולה.</div>
+    </div>
   </div>
 </div>
 
@@ -140,7 +158,8 @@
   <div style="display:flex;align-items:center"><h2>פאנל אב-טיפוס</h2><div class="spacer"></div><button class="icon-btn" id="closePanel">✕ סגור</button></div>
   <div class="sub">שינויים כאן משפיעים רק על התצוגה שלך, חוץ מ"איפוס היצור".</div>
 
-  <div class="sec"><h3>פריסה</h3><div class="seg" id="segLayout"></div></div>
+  <div class="sec"><h3>סגנון מפה</h3><div class="seg" id="segMap"></div></div>
+  <div class="sec"><h3>פריסת החצר</h3><div class="seg" id="segLayout"></div></div>
   <div class="sec"><h3>תאורה</h3><div class="seg" id="segLight"></div></div>
   <div class="sec"><h3>פיצ'רים</h3><div id="toggles"></div></div>
   <div class="sec"><h3>שלב גדילה (היצור שלי)</h3><div class="seg" id="segStage"></div></div>
@@ -154,13 +173,14 @@
     <div class="row">
       <button class="mini" id="addBotOn">+ שחקן מחובר</button>
       <button class="mini" id="addBotOff">+ שחקן לא מחובר</button>
+      <button class="mini" id="addBotEgg">+ ביצה מדומה</button>
       <button class="mini" id="clearBots">נקה</button>
     </div>
   </div>
   <div class="sec">
     <h3>מצב חיבור</h3>
     <div class="kv" id="kv"></div>
-    <div class="row"><button class="mini danger" id="resetPet">איפוס היצור שלי</button></div>
+    <div class="row"><button class="mini" id="skipHatch">⏩ בקיעה עכשיו (היצור שלי)</button><button class="mini danger" id="resetPet">איפוס היצור שלי</button></div>
   </div>
 </aside>
 
@@ -222,6 +242,7 @@ const EGG = ["....dddd....","...dwwwwd...","..dwwwwwwd..","..dwwsswwd..",".dwwww
 const ICONS = {
   apple:{rows:["..g..",".rrr.","rrrrr","rrrrr",".rrr."],pal:{r:'#ff5d6c',g:'#5fbf4a'}},
   ball:{rows:[".bbb.","bwbbb","bbbbb","bbbwb",".bbb."],pal:{b:'#4aa3ff',w:'#ffffff'}},
+  flame:{rows:["..o..",".oo..",".oyo.","oyyro",".ooo."],pal:{o:'#ff8a3d',y:'#ffe066',r:'#ff4f4f'}},
   heart:{rows:[".r.r.","rrrrr","rrrrr",".rrr.","..r.."],pal:{r:'#ff6b8b'}},
   z:{rows:["zzzz","..z.",".z..","zzzz"],pal:{z:'#e8e3ff'}},
   drop:{rows:[".b.","bbb",".b."],pal:{b:'#7fc8ff'}},
@@ -231,6 +252,12 @@ const STAGES = [
 ];
 const STAGE_BY = Object.fromEntries(STAGES.map(s=>[s.k,s]));
 const MIN = 60000, HOUR = 3600000;
+const HATCH_BASE = 5*MIN, WARM_MAX = 9, WARM_STEP = 20000, WARM_CD = 3000; // 5 min, down to 2 min fully warmed
+const PLACES = { nest:{he:'חדר קינון',em:'🥚'}, yard:{he:'החצר',em:'🏡'}, race:{he:'מגרש המירוצים',em:'🏁',locked:true} };
+const MAPR = {
+  top:{ nest:{x:22,y:40,w:104,h:80}, yard:{x:176,y:26,w:128,h:92}, race:{x:66,y:134,w:188,h:60} },
+  side:{ nest:{x:10,y:84,w:94,h:96}, yard:{x:112,y:74,w:96,h:106}, race:{x:216,y:56,w:96,h:124} },
+};
 const STATS = [
   {k:'food',he:'שובע'},{k:'joy',he:'שמחה'},{k:'energy',he:'אנרגיה'},{k:'clean',he:'ניקיון'}
 ];
@@ -245,7 +272,7 @@ const BOT_NAMES = ['פיצי','בומבה','טוסט','לולו','זיגי','מ�
 
 // ---------- state ----------
 const F = {
-  layout:'yard', light:'auto', stage:'auto', ovOn:false, ov:{food:80,joy:80,energy:80,clean:80},
+  layout:'yard', mapStyle:'top', light:'auto', stage:'auto', ovOn:false, ov:{food:80,joy:80,energy:80,clean:80},
   mimic:true, offlineSleep:true, tags:true, idleYawn:true, noCd:false,
 };
 let myId=null, mode='connecting';
@@ -254,6 +281,7 @@ const bots = new Map();     // id -> pet-like
 const online = new Map();   // id -> {idle, act}
 const names = new Map();    // id -> owner display name
 const ents = new Map();     // id -> render entity
+let view='map', prevMyStage=null;
 let loaded=false, roomOk=false, lastInput=Date.now(), myIdle=false;
 const now = () => Date.now();
 const clamp = (v,a=0,b=100) => Math.max(a, Math.min(b, v));
@@ -270,21 +298,25 @@ function cleanPet(raw){
   return {
     species, name: String(raw.name||SPECIES[species].defName).slice(0,14),
     owner: String(raw.owner||'').slice(0,14),
+    warm: Math.max(0, Math.min(WARM_MAX, Math.floor(Number(raw.warm)||0))),
     born: Number(raw.born)||now(), at: Number(raw.at)||now(), stats, cd,
   };
 }
+function hatchAt(p){ return p.born + HATCH_BASE - Math.min(p.warm||0, WARM_MAX)*WARM_STEP; }
+function hatchProgress(p){ const h=hatchAt(p); return Math.max(0, Math.min(1, (now()-p.born)/Math.max(1,h-p.born))); }
 function curStats(p){
-  const hrs = Math.max(0,(now()-p.at)/HOUR);
+  const hrs = Math.max(0,(now()-Math.max(p.at, hatchAt(p)))/HOUR);
   const o={}; for(const s of STATS) o[s.k] = clamp(p.stats[s.k] - RATE[s.k]*hrs); return o;
 }
 function dataOf(id){ return bots.get(id) || pets.get(id); }
 function statsOf(id){ const d=dataOf(id); if(!d) return null; if(id===myId && F.ovOn) return {...F.ov}; return curStats(d); }
-function stageOf(id){
+function stageOf(id, real){
   const d=dataOf(id); if(!d) return 'egg';
-  if(id===myId && F.stage!=='auto') return F.stage;
+  if(!real && id===myId && F.stage!=='auto') return F.stage;
   if(d.fixedStage) return d.fixedStage;
-  const age = now()-d.born;
-  if(age < 15*MIN) return 'egg';
+  const h=hatchAt(d);
+  if(now() < h) return 'egg';
+  const age = now()-h;
   if(age < 24*HOUR) return 'baby';
   if(age < 72*HOUR) return 'teen';
   return 'adult';
@@ -438,11 +470,26 @@ function update(dt){
     if(dist<1.5){ e.wait = 1+Math.random()*3.5; pickTarget(e); }
     else { e.x += dx/dist*sp*dt; e.y += dy/dist*sp*dt; if(Math.abs(dx)>0.5) e.flip = dx<0; }
   }
+  // my egg hatched?
+  if(myId && pets.get(myId)){
+    const rs=stageOf(myId,true);
+    if(prevMyStage==='egg' && rs!=='egg'){
+      const e=ents.get(myId);
+      if(view==='nest' && e){ e.hatchAnim=now(); setTimeout(()=>{ if(e) e.hatchAnim=0; toast('🎉 '+pets.get(myId).name+' בקע! קדימה לחצר'); setView('yard'); }, 2800); }
+      else toast('🎉 '+pets.get(myId).name+' בקע! הוא מחכה לך בחצר');
+      renderHUD();
+    }
+    prevMyStage=rs;
+  }
   // bots act on their own
   for(const [id,b] of bots){
     const e=ents.get(id); if(!e || !b.online) continue;
     e.botNext -= dt;
-    if(e.botNext<=0){ e.botNext = 6+Math.random()*9; const k=Object.keys(ACTIONS)[(Math.random()*4)|0]; if(F.mimic) animate(id,k); }
+    if(e.botNext<=0){
+      e.botNext = 6+Math.random()*9;
+      if(stageOf(id)==='egg'){ b.warm=Math.min(WARM_MAX,(b.warm||0)+1); if(F.mimic) animate(id,'warm'); }
+      else { const k=Object.keys(ACTIONS)[(Math.random()*4)|0]; if(F.mimic) animate(id,k); }
+    }
   }
 }
 function isIdle(id){
@@ -460,6 +507,7 @@ function drawEntityFx(e, cx, top, by, s){
   if(e.act){
     const p=(t-e.act.t0)/2800;
     const k=e.act.k;
+    if(k==='warm'){ for(let i=0;i<4;i++){ const q=(p*1.8+i/4)%1; ctx.globalAlpha=1-q; icon(i%2?'flame':'heart', cx-8+i*5, top+4-q*18, 1); } ctx.globalAlpha=1; return; }
     if(k==='feed'){ icon('apple', cx, top-4 - Math.abs(Math.sin(p*12))*3, 2); }
     else if(k==='play'){ const bx=cx + Math.sin(p*9)*14, by2=top-2 - Math.abs(Math.sin(p*14))*14; icon('ball', bx, by2, 2); }
     else if(k==='sleep'){ for(let i=0;i<3;i++){ const q=(p*2+i*0.33)%1; ctx.globalAlpha=1-q; icon('z', cx+5+q*8, top-2-q*14, 1); } ctx.globalAlpha=1; }
@@ -478,7 +526,7 @@ function drawEntityFx(e, cx, top, by, s){
 
 function drawYardEnts(){
   const t=now();
-  const list=[...ents.values()].filter(e=>dataOf(e.id)).sort((a,b)=>a.y-b.y);
+  const list=[...ents.values()].filter(e=>dataOf(e.id) && stageOf(e.id)!=='egg' && !e.hatchAnim).sort((a,b)=>a.y-b.y);
   for(const e of list){
     const d=dataOf(e.id), st=stageOf(e.id), s=STAGE_BY[st].s;
     let bob=0, wob=0;
@@ -494,7 +542,7 @@ function drawYardEnts(){
   }
 }
 function orderForBuilding(){
-  return [...ents.values()].filter(e=>dataOf(e.id)).sort((a,b)=>{
+  return [...ents.values()].filter(e=>dataOf(e.id) && stageOf(e.id)!=='egg' && !e.hatchAnim).sort((a,b)=>{
     const sa=(a.id===myId?2:0)+(isOnline(a.id)?1:0), sb=(b.id===myId?2:0)+(isOnline(b.id)?1:0);
     return sb-sa || (a.id<b.id?-1:1);
   });
@@ -525,6 +573,189 @@ function drawBuilding(t){
   });
   list.slice(9).forEach(e=>{ e.tagX=-999; });
   if(list.length>9){ rect(250,176,30,9,'#2b2140'); }
+}
+
+
+// ---------- nest room ----------
+const EGG_CRACKS1=[[5,3],[6,4],[5,5],[6,6]], EGG_CRACKS2=[[3,6],[4,7],[3,8],[8,5],[7,6],[8,7],[6,8]];
+function drawEgg(g, species, cx, by, s, prog){
+  const sp=SPECIES[species]||SPECIES.cat;
+  drawRows(g, EGG, {w:'#fff7e6', s:sp.pal.o}, cx, by, s, false, false);
+  const x0=Math.round(cx-6*s), y0=Math.round(by-12*s);
+  g.fillStyle='#2b2140';
+  if(prog>0.6) for(const [c,r] of EGG_CRACKS1) g.fillRect(x0+c*s,y0+r*s,s,s);
+  if(prog>0.85) for(const [c,r] of EGG_CRACKS2) g.fillRect(x0+c*s,y0+r*s,s,s);
+}
+function nestSlots(n){
+  const out=[], cols=4, w=62, gx=14, x0=(W-(cols*w+(cols-1)*gx))/2;
+  for(let i=0;i<Math.min(n,8);i++){ const c=i%cols, r=(i/cols)|0; out.push({x:x0+c*(w+gx), y:r?150:98, w}); }
+  return out;
+}
+function drawNestRoom(t){
+  // walls
+  rect(0,0,W,H,'#8a5a3a');
+  for(let y=0;y<78;y+=10){ rect(0,y,W,1,'#6f452b'); for(let x=((y/10)%2)*24;x<W;x+=48) rect(x,y,1,10,'#6f452b'); }
+  // window
+  const ph=phase(), skyc = SKY[ph][2];
+  rect(132,10,56,36,'#3b2a50'); rect(135,13,50,30,skyc); rect(159,13,2,30,'#3b2a50'); rect(135,27,50,2,'#3b2a50');
+  if(ph==='night'){ rect(170,17,4,4,'#fff3c4'); } else { rect(142,17,6,6, ph==='day'?'#ffe066':'#ffb36b'); }
+  // warm lamp glow
+  rect(60,0,2,18,'#3b2a50'); rect(54,18,14,6,'#ffd166'); rect(56,24,10,2,'#ffb84d');
+  rect(258,0,2,18,'#3b2a50'); rect(252,18,14,6,'#ffd166'); rect(254,24,10,2,'#ffb84d');
+  ctx.fillStyle='rgba(255,210,120,.10)'; ctx.fillRect(20,24,84,60); ctx.fillRect(218,24,84,60);
+  // floor
+  rect(0,78,W,H-78,'#b9824f');
+  for(let y=82;y<H;y+=8) rect(0,y,W,1,'#a87444');
+  for(let i=0;i<70;i++){ const h=hash('st'+i); rect(h%W, 80+((h>>>8)%(H-82)), 3,1,'#e2b45c'); }
+  if(ph==='night'){ ctx.fillStyle='rgba(20,20,70,.25)'; ctx.fillRect(0,0,W,H); }
+  // eggs
+  const list=[...ents.values()].filter(e=>dataOf(e.id) && (stageOf(e.id)==='egg' || e.hatchAnim))
+    .sort((a,b)=>(b.id===myId)-(a.id===myId) || (a.id<b.id?-1:1));
+  const slots=nestSlots(Math.max(list.length,4));
+  slots.forEach((sl,i)=>{
+    const cx=sl.x+sl.w/2, by=sl.y;
+    // straw nest
+    rect(cx-24,by-6,48,8,'#c08a2e'); rect(cx-20,by-9,40,4,'#d9a441'); rect(cx-26,by-2,52,4,'#a8761f');
+    for(let k=0;k<8;k++){ const h=hash('n'+i+'-'+k); rect(cx-22+(h%44), by-8+((h>>>7)%8), 4,1,'#f1c86a'); }
+    const e=list[i]; if(!e){ return; }
+    const d=dataOf(e.id), prog=hatchProgress(d);
+    let wob=0;
+    if(e.act && e.act.k==='warm') wob=Math.round(Math.sin(t*40)*1.5);
+    else if(prog>0.7 && ((t+e.phase)%2)<0.4) wob=Math.round(Math.sin(t*50));
+    if(e.hatchAnim){
+      const p=(now()-e.hatchAnim)/2600;
+      if(p<0.4){ drawEgg(ctx,d.species,cx+Math.round(Math.sin(t*70)*2),by-3,3,1); }
+      else {
+        const sp=SPECIES[d.species], up=Math.min(1,(p-0.4)/0.25);
+        // baby pops
+        drawRows(ctx, sp.spr, sp.pal, cx, by-3-Math.round(Math.sin(Math.min(1,(p-0.45)/0.3)*Math.PI)*8), 2, false, false);
+        // shell halves
+        drawRows(ctx, EGG.slice(0,6), {w:'#fff7e6',s:sp.pal.o}, cx-Math.round(up*14), by-3-18-Math.round(up*6), 3, false, false);
+        drawRows(ctx, EGG.slice(6), {w:'#fff7e6',s:sp.pal.o}, cx+Math.round(up*10), by-3, 3, false, false);
+        for(let k=0;k<8;k++){ const a=k/8*Math.PI*2, r=10+up*16; ctx.globalAlpha=1-up*0.7; rect(cx+Math.cos(a)*r, by-20+Math.sin(a)*r, 2,2, k%2?'#ffd166':'#ffffff'); }
+        ctx.globalAlpha=1;
+        if(p<0.5){ ctx.fillStyle='rgba(255,255,255,'+(1-(p-0.4)/0.1)*0.7+')'; ctx.fillRect(0,0,W,H); }
+      }
+    } else {
+      drawEgg(ctx, d.species, cx+wob, by-3, 3, prog);
+      drawEntityFx(e, cx, by-3-36, by, 3);
+    }
+    if(e.id===myId){ rect(cx-26,by+3,52,2,'#ffd166'); }
+    e.slot={x:cx-24,y:by-44,w:48,h:48};
+    e.tagX=cx; e.tagY=by+6; e.tagBelow=true;
+  });
+  if(!list.length){ /* empty room */ }
+}
+
+// ---------- world map ----------
+function pathLine(x1,y1,x2,y2,w,c){ const n=Math.ceil(Math.hypot(x2-x1,y2-y1)/2); for(let i=0;i<=n;i++){ const q=i/n; rect(x1+(x2-x1)*q-w/2, y1+(y2-y1)*q-w/2, w, w, c); } }
+function eggEnts(){ return [...ents.values()].filter(e=>dataOf(e.id) && stageOf(e.id)==='egg'); }
+function petEnts(){ return [...ents.values()].filter(e=>dataOf(e.id) && stageOf(e.id)!=='egg'); }
+function drawLock(cx,cy){
+  rect(cx-6,cy-12,12,3,'#cfc5e8'); rect(cx-6,cy-12,3,9,'#cfc5e8'); rect(cx+3,cy-12,3,9,'#cfc5e8');
+  rect(cx-9,cy-4,18,14,'#ffd166'); rect(cx-1,cy,2,5,'#2b2140');
+}
+function drawMapTop(t){
+  const R=MAPR.top;
+  rect(0,0,W,H,'#78c257');
+  for(let i=0;i<160;i++){ const h=hash('mt'+i); rect(h%W,(h>>>8)%H,2,1,'#62ab47'); }
+  for(let i=0;i<20;i++){ const h=hash('mf'+i); rect(h%W,(h>>>8)%H,2,2,['#ff8fa3','#ffd166','#fff'][i%3]); }
+  // paths
+  const hub={x:160,y:124};
+  pathLine(R.nest.x+R.nest.w/2, R.nest.y+R.nest.h-6, hub.x, hub.y, 8, '#e3c48a');
+  pathLine(R.yard.x+R.yard.w/2, R.yard.y+R.yard.h-2, hub.x, hub.y, 8, '#e3c48a');
+  pathLine(hub.x, hub.y, R.race.x+R.race.w/2, R.race.y+4, 8, '#e3c48a');
+  // pond
+  rect(136,30,34,14,'#5fb3e8'); rect(140,26,26,22,'#5fb3e8'); rect(144,32,8,2,'#bfe6ff');
+  // nest hut
+  const n=R.nest, nx=n.x+n.w/2;
+  rect(nx-30,n.y+40,60,30,'#c98d5a'); rect(nx-30,n.y+40,60,3,'#e0a66d');
+  for(let i=0;i<14;i++) rect(nx-36+i*2.5, n.y+40-i*2.6, 72-i*5, 3, i%2?'#d19b2f':'#e8b84a');
+  rect(nx-7,n.y+52,14,18,'#3b2a50'); rect(nx-5,n.y+54,10,16, phase()==='day'?'#2a1e3f':'#ffcf6e');
+  eggEnts().slice(0,5).forEach((e,i)=>{ const d=dataOf(e.id); drawEgg(ctx,d.species,n.x+16+i*17,n.y+n.h+2,1,hatchProgress(d)); });
+  // yard
+  const y=R.yard;
+  rect(y.x,y.y,y.w,y.h,'#8bd368');
+  for(let x=y.x;x<=y.x+y.w;x+=8){ rect(x,y.y,3,5,'#e0a66d'); rect(x,y.y+y.h-5,3,5,'#e0a66d'); }
+  for(let yy=y.y;yy<=y.y+y.h;yy+=8){ rect(y.x,yy,3,5,'#e0a66d'); rect(y.x+y.w-3,yy,3,5,'#e0a66d'); }
+  rect(y.x+y.w-22,y.y+10,6,16,'#8a5a3a'); rect(y.x+y.w-32,y.y+2,26,12,'#3f9a4a');
+  petEnts().forEach(e=>{ const d=dataOf(e.id);
+    const mx=y.x+12+(e.x-YARD.minX)/(YARD.maxX-YARD.minX)*(y.w-24), my=y.y+26+(e.y-YARD.minY)/(YARD.maxY-YARD.minY)*(y.h-34);
+    const bob=(!e.sleeping && e.wait<=0)?(((t*6)|0)%2):0;
+    drawRows(ctx, SPECIES[d.species].spr, SPECIES[d.species].pal, mx, my-bob, 1, e.flip, e.sleeping); });
+  // race track
+  const r=R.race;
+  rect(r.x+10,r.y,r.w-20,r.h,'#c9774a'); rect(r.x,r.y+10,r.w,r.h-20,'#c9774a');
+  rect(r.x+24,r.y+16,r.w-48,r.h-32,'#6fb84e');
+  for(let x=r.x+16;x<r.x+r.w-16;x+=12){ rect(x,r.y+7,6,1,'#fff'); rect(x,r.y+r.h-8,6,1,'#fff'); }
+  for(let i=0;i<6;i++) for(let j=0;j<2;j++) rect(r.x+r.w/2+j*3,r.y+i*2.6,3,3,(i+j)%2?'#fff':'#2b2140');
+  nightTint(0);
+  if(phase()!=='day'){ rect(nx-5,n.y+54,10,16,'#ffcf6e'); }
+  ctx.fillStyle='rgba(20,14,40,.45)'; ctx.fillRect(r.x,r.y,r.w,r.h);
+  drawLock(r.x+r.w/2, r.y+r.h/2);
+}
+function drawMapSide(t){
+  const R=MAPR.side, G=180;
+  drawSky(t, G);
+  for(let x=0;x<W;x+=4){ const h=12+Math.round(Math.sin(x/30)*5+Math.sin(x/13)*2); rect(x,G-h,4,h,'#5aa356'); }
+  rect(0,G,W,H-G,'#79c257'); rect(0,G,W,2,'#5ea845');
+  // nest hut
+  const n=R.nest, nx=n.x+n.w/2;
+  rect(nx-34,G-46,68,46,'#c98d5a');
+  for(let i=0;i<16;i++) rect(nx-40+i*2.5, G-46-i*2.4, 80-i*5, 3, i%2?'#d19b2f':'#e8b84a');
+  rect(nx-8,G-26,16,26,'#3b2a50'); rect(nx-6,G-24,12,24, phase()==='day'?'#2a1e3f':'#ffcf6e');
+  eggEnts().slice(0,4).forEach((e,i)=>{ const d=dataOf(e.id); drawEgg(ctx,d.species,n.x+8+i*13,G+12,1,hatchProgress(d)); });
+  // yard
+  const y=R.yard;
+  for(let x=y.x;x<y.x+y.w;x+=8){ rect(x,G-18,3,18,'#e0a66d'); }
+  rect(y.x,G-14,y.w,2,'#c98d5a'); rect(y.x,G-7,y.w,2,'#c98d5a');
+  rect(y.x+y.w/2-3,G-62,6,46,'#8a5a3a'); rect(y.x+y.w/2-24,G-84,48,26,'#3f9a4a'); rect(y.x+y.w/2-16,G-92,32,10,'#3f9a4a');
+  petEnts().forEach(e=>{ const d=dataOf(e.id);
+    const mx=y.x+8+(e.x-YARD.minX)/(YARD.maxX-YARD.minX)*(y.w-16);
+    const bob=(!e.sleeping && e.wait<=0)?(((t*6)|0)%2):0;
+    drawRows(ctx, SPECIES[d.species].spr, SPECIES[d.species].pal, mx, G+14-bob, 1, e.flip, e.sleeping); });
+  // stadium
+  const r=R.race;
+  rect(r.x,G-80,r.w,80,'#d9d4e8'); for(let i=0;i<5;i++) rect(r.x+i*4,G-80+i*14,r.w-i*8,3,'#b7afd0');
+  rect(r.x,G-84,r.w,4,'#8f7cec');
+  for(let i=0;i<4;i++){ const fx=r.x+10+i*26; rect(fx,G-104,2,20,'#3b2a50'); rect(fx+2,G-104,10,6,i%2?'#ff5d6c':'#ffd166'); }
+  for(let i=0;i<8;i++) for(let j=0;j<2;j++) rect(r.x+r.w/2-12+i*3,G-30+j*3,3,3,(i+j)%2?'#fff':'#2b2140');
+  nightTint(G-110);
+  ctx.fillStyle='rgba(20,14,40,.45)'; ctx.fillRect(r.x,G-108,r.w,108);
+  drawLock(r.x+r.w/2, G-46);
+}
+const mapLabelsEl=document.getElementById('mapLabels'); const placeEls={};
+Object.entries(PLACES).forEach(([k,pl])=>{
+  const b=document.createElement('button'); b.className='place'+(pl.locked?' locked':'');
+  b.innerHTML='<span class="pe"></span><span class="pn"></span><span class="pc"></span>';
+  b.querySelector('.pe').textContent=pl.em; b.querySelector('.pn').textContent=pl.he;
+  b.addEventListener('click',()=>goPlace(k));
+  mapLabelsEl.appendChild(b); placeEls[k]=b;
+});
+function placeMapLabels(){
+  const show = view==='map';
+  mapLabelsEl.style.display = show ? '' : 'none';
+  if(!show) return;
+  const R=MAPR[F.mapStyle];
+  const counts={nest:eggEnts().length, yard:petEnts().length};
+  for(const k in placeEls){
+    const r=R[k], el=placeEls[k];
+    const top = F.mapStyle==='side' ? (k==='race'? 180-112 : k==='yard'? 180-96 : 180-90) : (k==='race' ? r.y+r.h-3 : r.y-2);
+    const sw=mapLabelsEl.clientWidth||1, hw=el.offsetWidth/2;
+    const px=Math.max(hw+4, Math.min(sw-hw-4, (r.x+r.w/2)/W*sw));
+    el.style.left=px+'px'; el.style.top=(top/H*100)+'%';
+    el.querySelector('.pc').textContent = PLACES[k].locked ? '🔒 בקרוב' : String(counts[k]||0);
+  }
+}
+function goPlace(k){
+  if(PLACES[k].locked){ toast('🏁 מגרש המירוצים בבנייה. זה השלב הבא!'); return; }
+  setView(k);
+}
+function setView(v){
+  view=v;
+  try{ history.replaceState(null,'', v==='map' ? location.pathname : '#'+v); }catch(e){}
+  $('backMap').style.display = v==='map' ? 'none' : '';
+  renderHUD();
 }
 
 // ---------- tags overlay ----------
@@ -561,12 +792,25 @@ function frame(ts){
   const dt=Math.min(0.1,(ts-last)/1000); last=ts;
   const t=ts/1000;
   update(dt);
-  if(F.layout==='yard'){ drawYard(t); drawYardEnts(); }
+  for(const e of ents.values()){ e.tagX=null; e.slot=null; }
+  if(view==='map'){ F.mapStyle==='side' ? drawMapSide(t) : drawMapTop(t); }
+  else if(view==='nest') drawNestRoom(t);
+  else if(F.layout==='yard'){ drawYard(t); drawYardEnts(); }
   else drawBuilding(t);
-  placeTags();
+  placeTags(); placeMapLabels();
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
+cv.addEventListener('pointerdown', ev=>{
+  const b=cv.getBoundingClientRect(), x=(ev.clientX-b.left)/b.width*W, y=(ev.clientY-b.top)/b.height*H;
+  if(view==='map'){
+    const R=MAPR[F.mapStyle];
+    for(const k in R){ const r=R[k]; if(x>=r.x && x<=r.x+r.w && y>=(F.mapStyle==='side'?40:r.y) && y<=r.y+r.h+(F.mapStyle==='side'?20:0)){ goPlace(k); return; } }
+  } else if(view==='nest'){
+    const e=ents.get(myId);
+    if(e && e.slot && x>=e.slot.x && x<=e.slot.x+e.slot.w && y>=e.slot.y && y<=e.slot.y+e.slot.h+10) doWarm();
+  }
+});
 
 // ---------- HUD ----------
 const $=id=>document.getElementById(id);
@@ -582,10 +826,28 @@ function renderHUD(){
   const d=myId && pets.get(myId);
   $('meCard').style.display = d ? '' : 'none';
   const cnt = 1 + [...online.keys()].filter(id=>id!==myId).length + [...bots.values()].filter(b=>b.online).length;
-  $('onlinePill').innerHTML = `👥 <b>${cnt}</b> מחוברים`;
+  $('onlinePill').innerHTML = `👥 <b>${cnt}</b>`; $('onlinePill').title = cnt+' מחוברים';
   if(!d) return;
   const st=statsOf(myId), stg=stageOf(myId), m=moodOf(st);
   $('meName').textContent=d.name;
+  const isEgg = stg==='egg';
+  $('eggBox').style.display = isEgg ? '' : 'none';
+  $('petBox').style.display = isEgg ? 'none' : '';
+  $('goNest').style.display = (isEgg && view!=='nest') ? '' : 'none';
+  if(isEgg){
+    const prog=hatchProgress(d), rem=Math.max(0,hatchAt(d)-now());
+    $('meSub').textContent=`${SPECIES[d.species].he} · ביצה · כוח מיוחד: ${SPECIES[d.species].trait}`;
+    $('meMood').textContent='🥚 מתחממת';
+    $('eggEta').textContent = rem>0 ? 'בוקעת בעוד '+fmt(rem) : 'בוקעת עכשיו!';
+    $('eggBar').style.width=Math.round(prog*100)+'%';
+    const left=WARM_MAX-(d.warm||0), cdLeft=WARM_CD-(now()-lastWarm);
+    const wb=$('warmBtn');
+    wb.disabled = left<=0 || (cdLeft>0 && !F.noCd);
+    wb.textContent = left<=0 ? '🔥 הביצה חמימה מספיק' : `🔥 חימום (נשארו ${left})`;
+    const a=$('meAvatar').getContext('2d'); a.imageSmoothingEnabled=false; a.clearRect(0,0,16,16);
+    drawEgg(a, d.species, 8, 14, 1, prog);
+    renderKV(); return;
+  }
   $('meSub').textContent=`${SPECIES[d.species].he} · ${STAGE_BY[stg].he} · כוח מיוחד: ${SPECIES[d.species].trait}`;
   $('meMood').textContent=`${m.em} ${m.he}`;
   for(const s of STATS){
@@ -619,7 +881,7 @@ async function savePet(p){
   if(pendingWrite){ const q=pendingWrite; pendingWrite=null; savePet(q); }
 }
 function doAction(k){
-  const d=pets.get(myId); if(!d) return;
+  const d=pets.get(myId); if(!d || stageOf(myId)==='egg') return;
   const rem = d.cd[k] + ACTIONS[k].cd*MIN - now();
   if(rem>0 && !F.noCd) return;
   const cur=curStats(d), delta=ACTIONS[k].d;
@@ -629,6 +891,21 @@ function doAction(k){
   setPresence({act:{k, t:now()}});
   savePet(nd);
 }
+
+let lastWarm=0;
+function doWarm(){
+  const d=pets.get(myId); if(!d || stageOf(myId)!=='egg') return;
+  if((now()-lastWarm)<WARM_CD && !F.noCd) return;
+  if((d.warm||0)>=WARM_MAX){ toast('הביצה כבר חמימה מספיק, עוד רגע היא בוקעת'); return; }
+  lastWarm=now();
+  animate(myId,'warm');
+  setPresence({act:{k:'warm', t:now()}});
+  savePet({...d, warm:(d.warm||0)+1});
+  setTimeout(renderHUD, WARM_CD+50);
+}
+$('warmBtn').addEventListener('click', doWarm);
+$('goNest').addEventListener('click', ()=>setView('nest'));
+$('backMap').addEventListener('click', ()=>setView('map'));
 
 // ---------- presence (Firebase) ----------
 let fb=null, myPresence={on:true, idle:false, act:null};
@@ -643,7 +920,7 @@ function onStatus(v){
     online.set(id, {idle: !!pr.idle});
     if(id===myId) continue;
     const a=pr.act, e=ents.get(id);
-    if(a && typeof a==='object' && ACTIONS[a.k] && e){
+    if(a && typeof a==='object' && (ACTIONS[a.k] || a.k==='warm') && e){
       if(e.seenT===undefined){ e.seenT=a.t; }
       else if(e.seenT!==a.t){ e.seenT=a.t; if(F.mimic) animate(id, a.k); }
     } else if(e && e.seenT===undefined) e.seenT=null;
@@ -705,6 +982,7 @@ async function init(){
   fb.onValue(fb.ref(fb.db,'status'), snap=>onStatus(snap.val()||{}));
 }
 init();
+{ const h=(location.hash||'').slice(1); setView(['nest','yard'].includes(h)?h:'map'); }
 
 // ---------- onboarding ----------
 let chosen='cat';
@@ -723,10 +1001,11 @@ $('hatchBtn').addEventListener('click',()=>{
   const name=($('petName').value||SPECIES[chosen].defName).trim().slice(0,14) || SPECIES[chosen].defName;
   const t=now();
   const owner=($('ownerName').value||'').trim().slice(0,14);
-  const p={species:chosen, name, owner, born:t, at:t, stats:{food:80,joy:80,energy:80,clean:80}, cd:{feed:0,play:0,sleep:0,clean:0}};
+  const p={species:chosen, name, owner, warm:0, born:t, at:t, stats:{food:80,joy:80,energy:80,clean:80}, cd:{feed:0,play:0,sleep:0,clean:0}};
   $('onboard').classList.remove('show');
   savePet(p);
-  toast('🥚 הביצה שלך בחצר! היא תבקע תוך כרבע שעה.');
+  setView('nest');
+  toast('🥚 הביצה שלך בחדר הקינון! חמם אותה כדי שתבקע מהר יותר.');
 });
 
 // ---------- panel ----------
@@ -738,6 +1017,7 @@ function seg(el, opts, key, after){
   el.innerHTML='';
   opts.forEach(([v,label])=>{ const b=document.createElement('button'); b.textContent=label; b.className=F[key]===v?'on':''; b.onclick=()=>{ F[key]=v; seg(el,opts,key,after); after&&after(); }; el.appendChild(b); });
 }
+seg($('segMap'), [['top','🗺️ מלמעלה'],['side','🏙️ מהצד']], 'mapStyle');
 seg($('segLayout'), [['yard','🏡 חצר משותפת'],['building','🏢 חלונות בבניין']], 'layout');
 seg($('segLight'), [['auto','לפי השעה'],['day','יום'],['dusk','שקיעה'],['night','לילה']], 'light');
 seg($('segStage'), [['auto','אוטומטי'],['egg','ביצה'],['baby','תינוק'],['teen','צעיר'],['adult','בוגר']], 'stage', renderHUD);
@@ -778,6 +1058,8 @@ function addBot(on){
 }
 $('addBotOn').onclick=()=>addBot(true);
 $('addBotOff').onclick=()=>addBot(false);
+$('addBotEgg').onclick=()=>{ addBot(true); const id=[...bots.keys()].pop(), b=bots.get(id); b.fixedStage=null; b.born=now(); b.warm=0; syncEnts(); renderHUD(); };
+$('skipHatch').onclick=()=>{ const d=pets.get(myId); if(!d){ toast('אין לך עדיין יצור'); return; } if(stageOf(myId,true)!=='egg'){ toast('היצור שלך כבר בקע'); return; } savePet({...d, born: now()-HATCH_BASE-1000, warm:0}); backdrop.click(); };
 $('clearBots').onclick=()=>{ bots.clear(); syncEnts(); renderHUD(); };
 let resetArm=0;
 $('resetPet').onclick=async e=>{
