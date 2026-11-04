@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>חצר פיקסל</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#17112a; --card:#241a3d; --card2:#2d2250; --line:#3b2a50; --ink:#f4eefe; --muted:#a99cc7;
+    --gold:#ffd166; --green:#7bdc6a; --red:#ff6b7a; --amber:#ffb84d; --shadow:#0e0a1a;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Rubik,system-ui,sans-serif}
+  body{min-height:100vh;background:
+    radial-gradient(circle at 20% 0%, #2a1d4d 0, transparent 45%),
+    radial-gradient(circle at 100% 30%, #23183f 0, transparent 40%), var(--bg)}
+  button{font-family:inherit;cursor:pointer}
+  .app{max-width:560px;margin:0 auto;padding:12px 12px 40px}
+  .top{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+  .logo{font-weight:800;font-size:20px;letter-spacing:.5px;display:flex;align-items:center;gap:8px}
+  .logo i{display:inline-block;width:14px;height:14px;background:var(--gold);box-shadow:4px 4px 0 #ff8fa3, -4px 4px 0 #7bc96f;margin-inline-end:6px}
+  .spacer{flex:1}
+  .pill{font-size:12px;background:var(--card);border:1px solid var(--line);padding:5px 10px;border-radius:99px;color:var(--muted);white-space:nowrap}
+  .pill b{color:var(--green)}
+  .icon-btn{background:var(--card2);border:2px solid var(--shadow);box-shadow:0 3px 0 var(--shadow);color:var(--ink);
+    border-radius:8px;padding:6px 10px;font-weight:600;font-size:13px}
+  .icon-btn:active{transform:translateY(2px);box-shadow:0 1px 0 var(--shadow)}
+
+  .stage{position:relative;border:3px solid var(--shadow);border-radius:8px;overflow:hidden;box-shadow:0 5px 0 var(--shadow);background:#000}
+  #scene{display:block;width:100%;height:auto;image-rendering:pixelated;image-rendering:crisp-edges}
+  #tags{position:absolute;inset:0;pointer-events:none}
+  .tag{position:absolute;font-size:11px;line-height:1.35;background:rgba(18,12,34,.82);color:#fff;padding:1px 7px;border-radius:9px;
+    white-space:nowrap;transform:translate(-50%,-100%);display:flex;align-items:center;gap:4px;transition:opacity .3s}
+  .tag.below{transform:translate(-50%,0)}
+  .tag .dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green)}
+  .tag.off{opacity:.7}.tag.off .dot{background:#6d6587;box-shadow:none}
+  .tag.me{background:rgba(255,209,102,.95);color:#2b2140;font-weight:600}
+  .tag .own{opacity:.75}
+  .status-line{font-size:11px;color:var(--muted);margin:8px 2px 0;min-height:14px}
+
+  .card{background:var(--card);border:2px solid var(--line);border-radius:12px;padding:12px;margin-top:14px}
+  .me-head{display:flex;align-items:center;gap:10px}
+  .me-head canvas{width:52px;height:52px;image-rendering:pixelated;background:var(--card2);border-radius:8px}
+  .me-name{font-weight:800;font-size:17px}
+  .me-sub{font-size:12px;color:var(--muted)}
+  .mood{margin-inline-start:auto;font-size:13px;background:var(--card2);padding:4px 10px;border-radius:99px;white-space:nowrap}
+  .bars{display:grid;grid-template-columns:1fr 1fr;gap:8px 14px;margin:12px 0}
+  .bar-l{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:3px}
+  .bar{height:10px;background:#120c22;border:2px solid var(--shadow);border-radius:3px;overflow:hidden}
+  .bar>i{display:block;height:100%;background:var(--green);transition:width .4s}
+  .actions{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+  .act{background:var(--gold);color:#2b2140;border:2px solid var(--shadow);box-shadow:0 4px 0 var(--shadow);border-radius:9px;
+    padding:8px 2px 6px;font-weight:800;font-size:13px;display:flex;flex-direction:column;align-items:center;gap:2px}
+  .act .em{font-size:20px;line-height:1}
+  .act small{font-weight:600;font-size:10px;opacity:.75;min-height:12px}
+  .act:active:not(:disabled){transform:translateY(3px);box-shadow:0 1px 0 var(--shadow)}
+  .act:disabled{background:#5a4d78;color:#cfc5e8;cursor:default}
+  .hint{font-size:12px;color:var(--muted);margin-top:10px;line-height:1.5}
+
+  /* drawer */
+  .backdrop{position:fixed;inset:0;background:rgba(0,0,0,.45);opacity:0;pointer-events:none;transition:opacity .2s;z-index:20}
+  .backdrop.open{opacity:1;pointer-events:auto}
+  .drawer{position:fixed;top:0;bottom:0;left:0;width:min(340px,90vw);background:#1e1636;border-inline-start:3px solid var(--shadow);
+    transform:translateX(-105%);transition:transform .25s;z-index:21;overflow-y:auto;padding:14px 14px 40px}
+  .drawer.open{transform:translateX(0)}
+  .drawer h2{margin:0 0 4px;font-size:16px}
+  .drawer .sub{font-size:11px;color:var(--muted);margin-bottom:12px}
+  .sec{border-top:1px dashed var(--line);padding:12px 0}
+  .sec h3{font-size:13px;margin:0 0 8px;color:var(--gold)}
+  .seg{display:flex;flex-wrap:wrap;gap:6px}
+  .seg button{background:var(--card2);color:var(--ink);border:2px solid var(--line);border-radius:8px;padding:5px 10px;font-size:12px}
+  .seg button.on{background:var(--gold);color:#2b2140;border-color:var(--shadow);font-weight:600}
+  .sw{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13px;padding:5px 0}
+  .sw small{display:block;color:var(--muted);font-size:11px}
+  .tog{width:40px;height:22px;border-radius:99px;background:#4a3d68;border:2px solid var(--shadow);position:relative;flex:none}
+  .tog::after{content:"";position:absolute;top:2px;right:2px;width:14px;height:14px;border-radius:50%;background:#cfc5e8;transition:right .15s}
+  .tog.on{background:var(--green)}.tog.on::after{right:20px;background:#fff}
+  .slider{display:grid;grid-template-columns:62px 1fr 30px;align-items:center;gap:8px;font-size:12px;margin:4px 0}
+  .slider input{width:100%;accent-color:var(--gold)}
+  .row{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+  .mini{background:var(--card2);color:var(--ink);border:2px solid var(--line);border-radius:8px;padding:5px 10px;font-size:12px}
+  .mini.danger{border-color:#7a2f45;color:#ffb3c0}
+  .kv{font-size:12px;color:var(--muted);line-height:1.8}
+  .kv b{color:var(--ink);font-weight:600}
+
+  /* onboarding */
+  .modal{position:fixed;inset:0;background:rgba(10,6,20,.82);display:none;align-items:center;justify-content:center;z-index:30;padding:16px}
+  .modal.show{display:flex}
+  .sheet{background:var(--card);border:3px solid var(--shadow);border-radius:14px;padding:18px;max-width:440px;width:100%;box-shadow:0 6px 0 var(--shadow)}
+  .sheet h2{margin:0 0 4px;font-size:20px}
+  .sheet p{margin:0 0 14px;color:var(--muted);font-size:13px}
+  .species{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+  .sp{background:var(--card2);border:2px solid var(--line);border-radius:10px;padding:8px 4px;color:var(--ink);display:flex;flex-direction:column;align-items:center;gap:4px;font-size:13px;font-weight:600}
+  .sp canvas{width:48px;height:48px;image-rendering:pixelated}
+  .sp small{font-size:10px;color:var(--muted);font-weight:400}
+  .sp.on{border-color:var(--gold);background:#3a2d62}
+  .field{margin:14px 0 6px;font-size:13px}
+  .field input{width:100%;margin-top:6px;padding:10px;border-radius:8px;border:2px solid var(--line);background:#160f2a;color:var(--ink);font-family:inherit;font-size:15px}
+  .big{width:100%;margin-top:12px;background:var(--gold);color:#2b2140;border:2px solid var(--shadow);box-shadow:0 4px 0 var(--shadow);border-radius:10px;padding:12px;font-weight:800;font-size:16px}
+  .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(30px);background:#2d2250;border:2px solid var(--shadow);
+    padding:8px 14px;border-radius:10px;font-size:13px;opacity:0;transition:.25s;z-index:40;pointer-events:none;max-width:90vw;text-align:center}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="top">
+    <div class="logo"><i></i>חצר פיקסל</div>
+    <div class="spacer"></div>
+    <div class="pill" id="onlinePill">👥 <b>1</b> מחוברים</div>
+    <button class="icon-btn" id="openPanel">⚙️ פאנל</button>
+  </div>
+
+  <div class="stage">
+    <canvas id="scene"></canvas>
+    <div id="tags"></div>
+  </div>
+  <div class="status-line" id="statusLine">מתחבר…</div>
+
+  <div class="card" id="meCard" style="display:none">
+    <div class="me-head">
+      <canvas id="meAvatar" width="16" height="16"></canvas>
+      <div>
+        <div class="me-name" id="meName"></div>
+        <div class="me-sub" id="meSub"></div>
+      </div>
+      <div class="mood" id="meMood"></div>
+    </div>
+    <div class="bars" id="bars"></div>
+    <div class="actions" id="actions"></div>
+    <div class="hint">כל מדד יורד לאט עם הזמן. אחרי כל פעולה יש זמן המתנה, אז עדיף לחזור כמה פעמים ביום ולא ללחוץ ברצף. מי שמחובר עכשיו רואה את היצור שלך עושה את הפעולה.</div>
+  </div>
+</div>
+
+<!-- prototype panel -->
+<div class="backdrop" id="backdrop"></div>
+<aside class="drawer" id="drawer">
+  <div style="display:flex;align-items:center"><h2>פאנל אב-טיפוס</h2><div class="spacer"></div><button class="icon-btn" id="closePanel">✕ סגור</button></div>
+  <div class="sub">שינויים כאן משפיעים רק על התצוגה שלך, חוץ מ"איפוס היצור".</div>
+
+  <div class="sec"><h3>פריסה</h3><div class="seg" id="segLayout"></div></div>
+  <div class="sec"><h3>תאורה</h3><div class="seg" id="segLight"></div></div>
+  <div class="sec"><h3>פיצ'רים</h3><div id="toggles"></div></div>
+  <div class="sec"><h3>שלב גדילה (היצור שלי)</h3><div class="seg" id="segStage"></div></div>
+  <div class="sec">
+    <h3>מדדים (תצוגה מקומית)</h3>
+    <div id="sliders"></div>
+    <div class="row"><button class="mini" id="resetOv">חזרה למדדים האמיתיים</button></div>
+  </div>
+  <div class="sec">
+    <h3>שחקנים מדומים</h3>
+    <div class="row">
+      <button class="mini" id="addBotOn">+ שחקן מחובר</button>
+      <button class="mini" id="addBotOff">+ שחקן לא מחובר</button>
+      <button class="mini" id="clearBots">נקה</button>
+    </div>
+  </div>
+  <div class="sec">
+    <h3>מצב חיבור</h3>
+    <div class="kv" id="kv"></div>
+    <div class="row"><button class="mini danger" id="resetPet">איפוס היצור שלי</button></div>
+  </div>
+</aside>
+
+<!-- onboarding -->
+<div class="modal" id="onboard">
+  <div class="sheet">
+    <h2>🥚 בחר את החיה שלך</h2>
+    <p>היא תבקע מביצה ותגדל לפי הטיפול שלך. כל חיה טובה במשהו אחר במירוצים שיגיעו בהמשך, ואף אחת לא חזקה יותר מהאחרות.</p>
+    <div class="species" id="speciesGrid"></div>
+    <label class="field">איך קוראים לה?
+      <input id="petName" maxlength="14" autocomplete="off">
+    </label>
+    <label class="field">ואיך קוראים לך? (יופיע ליד היצור)
+      <input id="ownerName" maxlength="14" autocomplete="off" placeholder="למשל: דניאל">
+    </label>
+    <button class="big" id="hatchBtn">קבל ביצה</button>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script type="module">
+const firebaseConfig = {
+  apiKey: "AIzaSyDd2FCy5RDZivQL8McxnMTdDOLkoyXfm08",
+  authDomain: "pixel-yard.firebaseapp.com",
+  databaseURL: "https://pixel-yard-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "pixel-yard",
+  storageBucket: "pixel-yard.firebasestorage.app",
+  messagingSenderId: "894205644444",
+  appId: "1:894205644444:web:183d266cce82d2b9586759"
+};
+const V='13.2.0', B='https://www.gstatic.com/firebasejs/'+V+'/';
+window.__fbReady = Promise.all([import(B+'firebase-app.js'), import(B+'firebase-auth.js'), import(B+'firebase-database.js')])
+  .then(([A,U,D])=>{
+    const app=A.initializeApp(firebaseConfig);
+    return { auth:U.getAuth(app), signInAnonymously:U.signInAnonymously, db:D.getDatabase(app),
+      ref:D.ref, set:D.set, remove:D.remove, onValue:D.onValue, onDisconnect:D.onDisconnect, serverTimestamp:D.serverTimestamp };
+  }).catch(e=>{ console.error(e); return null; });
+(() => {
+'use strict';
+// ---------- constants ----------
+const W = 320, H = 200;
+const cv = document.getElementById('scene');
+cv.width = W; cv.height = H;
+const ctx = cv.getContext('2d');
+ctx.imageSmoothingEnabled = false;
+
+const BASE = { d:'#2b2140', e:'#140e26', h:'#ffd166', g:'#5fd3c4' };
+const SPECIES = {
+  cat:   { he:'חתול', trait:'זינוק מהיר', defName:'מיצי', pal:{o:'#f2a65a',p:'#ff8fa3',w:'#fde8cf'},
+    spr:[".d........d.","dpd......dpd","dooddddddood","dooooooooood","doeooooooeod","doeooooooeod","dooooppooood",".dooooooood.",".dowwwwwwod.",".dowwwwwwod.",".dood..dood.",".ddd....ddd."]},
+  bunny: { he:'ארנב', trait:'קפיצה גבוהה', defName:'שוקו', pal:{o:'#e8e3f0',p:'#ffb3c6',w:'#ffffff'},
+    spr:["..dd....dd..",".dpd....dpd.",".dpd....dpd.",".dod....dod.",".dooddddood.","dooooooooood","doeooooooeod","dooooppooood",".dooooooood.",".dowwwwwwod.",".dood..dood.",".ddd....ddd."]},
+  frog:  { he:'צפרדע', trait:'עמידות', defName:'קרפדי', pal:{o:'#7bc96f',p:'#ff9eb0',w:'#e9ffd9'},
+    spr:[".ddd....ddd.","dwed....dwed","dwwddddddwwd","dooooooooood","dopoooooopod","dooddddddood","dooooooooood",".dowwwwwwod.",".dowwwwwwod.",".dooooooood.","dood....dood","ddd......ddd"]},
+  dragon:{ he:'דרקונצ׳יק', trait:'סיבולת', defName:'ספארק', pal:{o:'#8f7cec',p:'#ff9eb0',w:'#ffe3a3'},
+    spr:["..h......h..","..hd....dh..",".dooddddood.","dooooooooood","doeooooooeod","dooooooooood","doooddddoood","gdowwwwwwodg","ggdowwwwodgg",".dooooooood.",".dood..dood.",".ddd....ddd."]},
+};
+const EGG = ["....dddd....","...dwwwwd...","..dwwwwwwd..","..dwwsswwd..",".dwwwwwwwwd.",".dwsswwwwwd.",".dwwwwwsswd.",".dwwwwwwwwd.",".dwwsswwwwd.","..dwwwwwwd..","...dwwwwd...","....dddd...."];
+const ICONS = {
+  apple:{rows:["..g..",".rrr.","rrrrr","rrrrr",".rrr."],pal:{r:'#ff5d6c',g:'#5fbf4a'}},
+  ball:{rows:[".bbb.","bwbbb","bbbbb","bbbwb",".bbb."],pal:{b:'#4aa3ff',w:'#ffffff'}},
+  heart:{rows:[".r.r.","rrrrr","rrrrr",".rrr.","..r.."],pal:{r:'#ff6b8b'}},
+  z:{rows:["zzzz","..z.",".z..","zzzz"],pal:{z:'#e8e3ff'}},
+  drop:{rows:[".b.","bbb",".b."],pal:{b:'#7fc8ff'}},
+};
+const STAGES = [
+  {k:'egg',he:'ביצה',s:2},{k:'baby',he:'תינוק',s:2},{k:'teen',he:'צעיר',s:3},{k:'adult',he:'בוגר',s:4}
+];
+const STAGE_BY = Object.fromEntries(STAGES.map(s=>[s.k,s]));
+const MIN = 60000, HOUR = 3600000;
+const STATS = [
+  {k:'food',he:'שובע'},{k:'joy',he:'שמחה'},{k:'energy',he:'אנרגיה'},{k:'clean',he:'ניקיון'}
+];
+const RATE = {food:6, joy:5, energy:4, clean:3}; // points per hour
+const ACTIONS = {
+  feed: {he:'האכלה', em:'🍎', cd:20, d:{food:30, clean:-5}},
+  play: {he:'משחק', em:'⚽', cd:15, d:{joy:30, energy:-10, food:-5}},
+  sleep:{he:'שינה', em:'🌙', cd:45, d:{energy:45}},
+  clean:{he:'ניקיון', em:'🫧', cd:30, d:{clean:40}},
+};
+const BOT_NAMES = ['פיצי','בומבה','טוסט','לולו','זיגי','מנגו','פופקורן','צ׳יפס'];
+
+// ---------- state ----------
+const F = {
+  layout:'yard', light:'auto', stage:'auto', ovOn:false, ov:{food:80,joy:80,energy:80,clean:80},
+  mimic:true, offlineSleep:true, tags:true, idleYawn:true, noCd:false,
+};
+let myId=null, mode='connecting';
+let pets = new Map();       // id -> pet doc (validated)
+const bots = new Map();     // id -> pet-like
+const online = new Map();   // id -> {idle, act}
+const names = new Map();    // id -> owner display name
+const ents = new Map();     // id -> render entity
+let loaded=false, roomOk=false, lastInput=Date.now(), myIdle=false;
+const now = () => Date.now();
+const clamp = (v,a=0,b=100) => Math.max(a, Math.min(b, v));
+
+function hash(s){ let h=2166136261; for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);} return h>>>0; }
+
+function cleanPet(raw){
+  if(!raw || typeof raw!=='object') return null;
+  const species = SPECIES[raw.species] ? raw.species : 'cat';
+  const st = raw.stats && typeof raw.stats==='object' ? raw.stats : {};
+  const stats = {}; for(const s of STATS) stats[s.k] = clamp(Number(st[s.k])||0);
+  const cd = {}; const rc = raw.cd && typeof raw.cd==='object' ? raw.cd : {};
+  for(const k in ACTIONS) cd[k] = Number(rc[k])||0;
+  return {
+    species, name: String(raw.name||SPECIES[species].defName).slice(0,14),
+    owner: String(raw.owner||'').slice(0,14),
+    born: Number(raw.born)||now(), at: Number(raw.at)||now(), stats, cd,
+  };
+}
+function curStats(p){
+  const hrs = Math.max(0,(now()-p.at)/HOUR);
+  const o={}; for(const s of STATS) o[s.k] = clamp(p.stats[s.k] - RATE[s.k]*hrs); return o;
+}
+function dataOf(id){ return bots.get(id) || pets.get(id); }
+function statsOf(id){ const d=dataOf(id); if(!d) return null; if(id===myId && F.ovOn) return {...F.ov}; return curStats(d); }
+function stageOf(id){
+  const d=dataOf(id); if(!d) return 'egg';
+  if(id===myId && F.stage!=='auto') return F.stage;
+  if(d.fixedStage) return d.fixedStage;
+  const age = now()-d.born;
+  if(age < 15*MIN) return 'egg';
+  if(age < 24*HOUR) return 'baby';
+  if(age < 72*HOUR) return 'teen';
+  return 'adult';
+}
+function moodOf(st){
+  const a=(st.food+st.joy+st.energy+st.clean)/4;
+  if(a>70) return {em:'😊',he:'מאושר',v:a};
+  if(a>40) return {em:'🙂',he:'בסדר',v:a};
+  if(a>20) return {em:'😟',he:'עצוב',v:a};
+  return {em:'😢',he:'מוזנח',v:a};
+}
+function isOnline(id){
+  if(bots.has(id)) return !!bots.get(id).online;
+  if(id===myId) return true;
+  return online.has(id);
+}
+
+// ---------- drawing helpers ----------
+function drawRows(g, rows, pal, cx, by, s, flip, sleep){
+  const w=rows[0].length, h=rows.length;
+  const x0=Math.round(cx - w*s/2), y0=Math.round(by - h*s);
+  for(let r=0;r<h;r++){
+    const row=rows[r];
+    for(let c=0;c<w;c++){
+      let ch=row[flip ? w-1-c : c];
+      if(!ch || ch==='.') continue;
+      if(sleep && ch==='e') ch='d';
+      const col = pal[ch] || BASE[ch]; if(!col) continue;
+      g.fillStyle=col; g.fillRect(x0+c*s, y0+r*s, s, s);
+    }
+  }
+}
+function drawPet(g, species, stage, cx, by, flip, sleep){
+  const sp=SPECIES[species]||SPECIES.cat, s=STAGE_BY[stage].s;
+  if(stage==='egg') drawRows(g, EGG, {w:'#fff7e6', s:sp.pal.o}, cx, by, s, false, false);
+  else drawRows(g, sp.spr, sp.pal, cx, by, s, flip, sleep);
+  return {w:12*s, h:12*s};
+}
+function icon(name, cx, by, s=2){ const i=ICONS[name]; drawRows(ctx, i.rows, i.pal, cx, by, s, false, false); }
+function rect(x,y,w,h,c){ ctx.fillStyle=c; ctx.fillRect(Math.round(x),Math.round(y),w,h); }
+
+function phase(){
+  if(F.light!=='auto') return F.light;
+  const h=new Date().getHours();
+  if(h>=7 && h<17) return 'day';
+  if((h>=17 && h<19) || (h>=5 && h<7)) return 'dusk';
+  return 'night';
+}
+const SKY = {
+  day:['#6ec3ff','#86ceff','#a0daff','#bce6ff','#d4f0ff'],
+  dusk:['#5a4a9a','#9b5fa8','#e07a8f','#ff9f6e','#ffc98a'],
+  night:['#10183d','#162150','#1c2a60','#223370','#2a3d80'],
+};
+function drawSky(t, ground){
+  const ph=phase(), cols=SKY[ph], bh=Math.ceil(ground/cols.length);
+  cols.forEach((c,i)=>rect(0,i*bh,W,bh+1,c));
+  if(ph==='night'){
+    for(let i=0;i<40;i++){ const h=hash('s'+i); if(((t*2+i)|0)%9===0) continue; rect(h%W, (h>>>9)%(ground-10), 1,1,'#fff8d6'); }
+    rect(262,14,10,10,'#fff3c4'); rect(266,14,6,6,cols[0]); // moon crescent
+  } else {
+    const sc = ph==='day' ? '#ffe066' : '#ffb36b';
+    rect(258,16,12,12,sc); rect(256,18,16,8,sc); rect(260,14,8,16,sc);
+  }
+  const cc = ph==='night' ? '#3a4a8f' : (ph==='dusk' ? '#ffd3c2' : '#ffffff');
+  for(let i=0;i<3;i++){
+    const x = ((t*(3+i) + i*140) % (W+80)) - 50, y = 14 + i*13;
+    rect(x,y,26,6,cc); rect(x+6,y-4,14,4,cc); rect(x+4,y+6,18,2,cc);
+  }
+}
+function nightTint(y0){
+  const ph=phase();
+  if(ph==='night') { ctx.fillStyle='rgba(12,18,60,.45)'; ctx.fillRect(0,y0,W,H-y0); }
+  if(ph==='dusk')  { ctx.fillStyle='rgba(120,50,90,.18)'; ctx.fillRect(0,y0,W,H-y0); }
+}
+
+// ---------- yard ----------
+const YARD = {minX:18, maxX:302, minY:112, maxY:192};
+function drawYard(t){
+  const G=98;
+  drawSky(t, G);
+  // far hills
+  for(let x=0;x<W;x+=4){ const h = 14 + Math.round(Math.sin(x/38)*6 + Math.sin(x/17)*3); rect(x, 84-h, 4, h+14, '#5aa356'); }
+  // fence
+  rect(0,82,W,3,'#c98d5a'); rect(0,90,W,3,'#c98d5a');
+  for(let x=4;x<W;x+=14){ rect(x,76,5,22,'#e0a66d'); rect(x,76,5,2,'#f2c18f'); rect(x+5,78,1,20,'#9c6a40'); }
+  // grass
+  rect(0,G,W,H-G,'#79c257');
+  for(let i=0;i<120;i++){ const h=hash('g'+i); const x=h%W, y=G+4+((h>>>8)%(H-G-6)); rect(x,y,2,1,'#5ea845'); rect(x+1,y-1,1,1,'#5ea845'); }
+  for(let i=0;i<14;i++){ const h=hash('f'+i); const x=h%W, y=G+6+((h>>>8)%(H-G-10)); const c=['#ff8fa3','#ffd166','#ffffff'][i%3]; rect(x,y,2,2,c); rect(x,y+2,1,2,'#3f8a33'); }
+  // path
+  for(let y=G;y<H;y+=2){ const w=34+ (y-G)*0.5; rect(W/2-w/2 + Math.sin(y/12)*6, y, w, 2, 'rgba(222,196,140,.55)'); }
+  // house (sleep corner)
+  rect(14,62,40,36,'#e8836b'); rect(14,62,40,3,'#ff9f87');
+  for(let i=0;i<12;i++) rect(10+i*2, 62-i*2, 48-i*4, 2, '#7d4f9c');
+  rect(26,76,16,22,'#3b2a50'); rect(28,78,12,20, phase()==='day' ? '#2a1e3f' : '#ffcf6e');
+  // tree
+  rect(282,48,8,52,'#8a5a3a'); rect(284,48,2,52,'#a8734d');
+  rect(264,26,44,26,'#3f9a4a'); rect(270,18,32,10,'#3f9a4a'); rect(268,30,8,6,'#56b85f'); rect(290,24,8,6,'#56b85f');
+  nightTint(G);
+}
+
+// ---------- building ----------
+function windowRects(n){
+  const out=[], w=64, h=40, gx=16, gy=14, x0=(W-(3*w+2*gx))/2, y0=34;
+  for(let i=0;i<Math.min(n,9);i++){ const c=i%3, r=(i/3)|0; out.push({x:x0+c*(w+gx), y:y0+r*(h+gy), w, h}); }
+  return out;
+}
+function drawBuildingBase(t){
+  drawSky(t, H);
+  rect(0,186,W,14,'#4b3a63');
+  rect(36,22,248,166,'#b8664a');
+  for(let y=24;y<186;y+=6) for(let x=36+((y/6)%2?0:8);x<284;x+=16) rect(x,y,1,5,'#a35940');
+  for(let y=26;y<186;y+=6) rect(36,y,248,1,'#a35940');
+  for(let i=0;i<8;i++) rect(28+i*0, 22-i*1.5, 264, 2, i%2?'#5a3f7a':'#6b4b91');
+  rect(28,10,264,12,'#6b4b91'); rect(28,10,264,2,'#8a68b5');
+}
+
+// ---------- entities ----------
+function newEnt(id){
+  const h=hash(id);
+  const home={x: 20 + (h%60), y: 104 + ((h>>>6)%14)};
+  const x = YARD.minX + (h>>>3)%(YARD.maxX-YARD.minX), y = YARD.minY + (h>>>11)%(YARD.maxY-YARD.minY);
+  return {id, x, y, tx:x, ty:y, wait:Math.random()*2, flip:false, act:null, seenT:undefined, home, phase:(h%100)/16,
+          botNext: 4+Math.random()*8, bx:0, by:0};
+}
+function pickTarget(e){ e.tx = YARD.minX + Math.random()*(YARD.maxX-YARD.minX); e.ty = YARD.minY + Math.random()*(YARD.maxY-YARD.minY); }
+function animate(id,k){ const e=ents.get(id); if(!e) return; e.act={k, t0:now(), until:now()+2800}; e.wait=Math.max(e.wait,2.8); }
+
+function syncEnts(){
+  const ids = new Set([...pets.keys(), ...bots.keys()]);
+  for(const id of ids) if(!ents.has(id)) ents.set(id, newEnt(id));
+  for(const id of [...ents.keys()]) if(!ids.has(id)) ents.delete(id);
+  rebuildTags();
+}
+
+function update(dt){
+  const t=now();
+  for(const e of ents.values()){
+    const d=dataOf(e.id); if(!d) continue;
+    const st=stageOf(e.id), on = isOnline(e.id) || !F.offlineSleep;
+    const stats=statsOf(e.id), sad = stats && moodOf(stats).v<=30;
+    const idle = F.idleYawn && isIdle(e.id);
+    e.sleeping = !on && st!=='egg';
+    if(e.act && t>e.act.until) e.act=null;
+    if(st==='egg') continue;
+    if(!on){ e.x += (e.home.x-e.x)*Math.min(1,dt*2); e.y += (e.home.y-e.y)*Math.min(1,dt*2); continue; }
+    if(e.act || idle) continue;
+    if(e.wait>0){ e.wait-=dt; continue; }
+    const dx=e.tx-e.x, dy=e.ty-e.y, dist=Math.hypot(dx,dy);
+    const sp = (sad?7:15) * (st==='baby'?0.7:1);
+    if(dist<1.5){ e.wait = 1+Math.random()*3.5; pickTarget(e); }
+    else { e.x += dx/dist*sp*dt; e.y += dy/dist*sp*dt; if(Math.abs(dx)>0.5) e.flip = dx<0; }
+  }
+  // bots act on their own
+  for(const [id,b] of bots){
+    const e=ents.get(id); if(!e || !b.online) continue;
+    e.botNext -= dt;
+    if(e.botNext<=0){ e.botNext = 6+Math.random()*9; const k=Object.keys(ACTIONS)[(Math.random()*4)|0]; if(F.mimic) animate(id,k); }
+  }
+}
+function isIdle(id){
+  if(id===myId) return myIdle;
+  if(bots.has(id)) return false;
+  const o=online.get(id); return !!(o && o.idle);
+}
+
+function drawEntityFx(e, cx, top, by, s){
+  const t=now();
+  if(e.sleeping){
+    for(let i=0;i<3;i++){ const p=((t/1000 + i*0.8 + e.phase) % 2.4)/2.4; ctx.globalAlpha=1-p; icon('z', cx+6+p*10, top-2-p*16, 1); }
+    ctx.globalAlpha=1; return;
+  }
+  if(e.act){
+    const p=(t-e.act.t0)/2800;
+    const k=e.act.k;
+    if(k==='feed'){ icon('apple', cx, top-4 - Math.abs(Math.sin(p*12))*3, 2); }
+    else if(k==='play'){ const bx=cx + Math.sin(p*9)*14, by2=top-2 - Math.abs(Math.sin(p*14))*14; icon('ball', bx, by2, 2); }
+    else if(k==='sleep'){ for(let i=0;i<3;i++){ const q=(p*2+i*0.33)%1; ctx.globalAlpha=1-q; icon('z', cx+5+q*8, top-2-q*14, 1); } ctx.globalAlpha=1; }
+    else if(k==='clean'){ for(let i=0;i<6;i++){ const q=(p*1.6+i/6)%1; const bx=cx-10+((hash('b'+i)%20)), by2=by-4-q*(s*12+10); ctx.globalAlpha=1-q; ctx.strokeStyle='#d8f4ff'; ctx.lineWidth=1; ctx.strokeRect(Math.round(bx),Math.round(by2),3,3); } ctx.globalAlpha=1; }
+    if(p>0.6){ ctx.globalAlpha=(1-p)/0.4; icon('heart', cx-9, top-6-(p-0.6)*20, 1); ctx.globalAlpha=1; }
+    return;
+  }
+  if(F.idleYawn && isIdle(e.id)){
+    rect(cx+4, top-11, 16, 8, '#ffffff'); rect(cx+2, top-5, 3, 2, '#ffffff');
+    const dots=((t/400)|0)%4; for(let i=0;i<Math.min(dots,3);i++) rect(cx+7+i*4, top-8, 2,2,'#2b2140');
+    return;
+  }
+  const stats=statsOf(e.id);
+  if(stats && moodOf(stats).v<=30){ const q=(t/1300 + e.phase)%1; if(q<0.6){ icon('drop', cx-8, top+2+q*6, 1); } }
+}
+
+function drawYardEnts(){
+  const t=now();
+  const list=[...ents.values()].filter(e=>dataOf(e.id)).sort((a,b)=>a.y-b.y);
+  for(const e of list){
+    const d=dataOf(e.id), st=stageOf(e.id), s=STAGE_BY[st].s;
+    let bob=0, wob=0;
+    if(st==='egg'){ wob = ((t/900 + e.phase)%3 < 0.6) ? Math.round(Math.sin(t/60)) : 0; }
+    else if(!e.sleeping && !e.act && e.wait<=0) bob = ((t/160)|0)%2;
+    else if(e.act) bob = ((t/220)|0)%2;
+    rect(e.x - 5*s, e.y-1, 10*s, 2, 'rgba(0,0,0,.18)');
+    drawPet(ctx, d.species, st, e.x+wob, e.y - bob, e.flip, e.sleeping || (e.act&&e.act.k==='sleep'));
+    const top = e.y - 12*s - bob;
+    drawEntityFx(e, e.x, top, e.y, s);
+    const busy = e.act || e.sleeping || (F.idleYawn && isIdle(e.id));
+    e.tagX=e.x; e.tagY=top-(busy?17:3); e.tagBelow=false;
+  }
+}
+function orderForBuilding(){
+  return [...ents.values()].filter(e=>dataOf(e.id)).sort((a,b)=>{
+    const sa=(a.id===myId?2:0)+(isOnline(a.id)?1:0), sb=(b.id===myId?2:0)+(isOnline(b.id)?1:0);
+    return sb-sa || (a.id<b.id?-1:1);
+  });
+}
+function drawBuilding(t){
+  drawBuildingBase(t);
+  const list=orderForBuilding(), wins=windowRects(list.length);
+  const allWins=windowRects(9);
+  allWins.forEach((w,i)=>{
+    const e=list[i], on = e && (isOnline(e.id) || !F.offlineSleep);
+    rect(w.x-3,w.y-3,w.w+6,w.h+6,'#3b2a50');
+    rect(w.x,w.y,w.w,w.h, e ? (on ? '#ffe08a' : '#2d3a6b') : '#22305c');
+    if(e && on){ rect(w.x,w.y,w.w,6,'#ffd166'); rect(w.x, w.y+w.h-6, w.w, 6, '#f4c96b'); }
+    rect(w.x+w.w/2-1, w.y, 2, w.h, '#3b2a50');
+    rect(w.x-4,w.y+w.h+3,w.w+8,3,'#8a4a35');
+    if(!e){ rect(w.x+4,w.y+4,w.w/2-8,w.h-8,'rgba(255,255,255,.05)'); return; }
+    const d=dataOf(e.id), st=stageOf(e.id), s=Math.min(STAGE_BY[st].s,3);
+    e.sleeping = !on && st!=='egg';
+    const cx = w.x + w.w/2 + ((on && st!=='egg' && !e.act) ? Math.round(Math.sin(t*0.6+e.phase)*16) : 0);
+    const by = w.y + w.h - 3;
+    const bob = (on && !e.act && st!=='egg') ? ((t*6|0)%2) : 0;
+    ctx.save(); ctx.beginPath(); ctx.rect(w.x,w.y-30,w.w,w.h+30); ctx.clip();
+    const sp=SPECIES[d.species]; const rows = st==='egg'?EGG:sp.spr;
+    drawRows(ctx, rows, st==='egg'?{w:'#fff7e6',s:sp.pal.o}:sp.pal, cx, by-bob, s, Math.sin(t*0.6+e.phase+1.57)<0, e.sleeping || (e.act&&e.act.k==='sleep'));
+    ctx.restore();
+    drawEntityFx(e, cx, by-12*s-bob, by, s);
+    e.tagX=w.x+w.w/2; e.tagY=w.y+w.h+6; e.tagBelow=true;
+  });
+  list.slice(9).forEach(e=>{ e.tagX=-999; });
+  if(list.length>9){ rect(250,176,30,9,'#2b2140'); }
+}
+
+// ---------- tags overlay ----------
+const tagsEl=document.getElementById('tags'); const tagEls=new Map();
+function rebuildTags(){
+  for(const [id,el] of tagEls) if(!ents.has(id)){ el.remove(); tagEls.delete(id); }
+  for(const id of ents.keys()){
+    let el=tagEls.get(id);
+    if(!el){ el=document.createElement('div'); el.className='tag'; el.innerHTML='<span class="dot"></span><span class="nm"></span><span class="own"></span>'; tagsEl.appendChild(el); tagEls.set(id,el); }
+    const d=dataOf(id); if(!d) continue;
+    const on=isOnline(id);
+    el.classList.toggle('off', !on); el.classList.toggle('me', id===myId);
+    el.querySelector('.nm').textContent = d.name;
+    let own='';
+    if(id===myId) own='· אתה';
+    else if(bots.has(id)) own='· בוט';
+    else if(d.owner) own='· '+d.owner;
+    el.querySelector('.own').textContent = own;
+  }
+}
+function placeTags(){
+  for(const [id,el] of tagEls){
+    const e=ents.get(id);
+    if(!F.tags || !e || e.tagX==null || e.tagX<-100){ el.style.display='none'; continue; }
+    el.style.display='flex';
+    el.classList.toggle('below', !!e.tagBelow);
+    el.style.left=(e.tagX/W*100)+'%'; el.style.top=(e.tagY/H*100)+'%';
+  }
+}
+
+// ---------- loop ----------
+let last=performance.now();
+function frame(ts){
+  const dt=Math.min(0.1,(ts-last)/1000); last=ts;
+  const t=ts/1000;
+  update(dt);
+  if(F.layout==='yard'){ drawYard(t); drawYardEnts(); }
+  else drawBuilding(t);
+  placeTags();
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+// ---------- HUD ----------
+const $=id=>document.getElementById(id);
+const barsEl=$('bars'), actsEl=$('actions');
+STATS.forEach(s=>{ barsEl.insertAdjacentHTML('beforeend', `<div><div class="bar-l"><span>${s.he}</span><span data-v="${s.k}"></span></div><div class="bar"><i data-b="${s.k}"></i></div></div>`); });
+Object.entries(ACTIONS).forEach(([k,a])=>{
+  const b=document.createElement('button'); b.className='act'; b.dataset.k=k;
+  b.innerHTML=`<span class="em">${a.em}</span><span>${a.he}</span><small></small>`;
+  b.addEventListener('click',()=>doAction(k)); actsEl.appendChild(b);
+});
+function fmt(ms){ const s=Math.ceil(ms/1000), m=(s/60)|0; return m+':'+String(s%60).padStart(2,'0'); }
+function renderHUD(){
+  const d=myId && pets.get(myId);
+  $('meCard').style.display = d ? '' : 'none';
+  const cnt = 1 + [...online.keys()].filter(id=>id!==myId).length + [...bots.values()].filter(b=>b.online).length;
+  $('onlinePill').innerHTML = `👥 <b>${cnt}</b> מחוברים`;
+  if(!d) return;
+  const st=statsOf(myId), stg=stageOf(myId), m=moodOf(st);
+  $('meName').textContent=d.name;
+  $('meSub').textContent=`${SPECIES[d.species].he} · ${STAGE_BY[stg].he} · כוח מיוחד: ${SPECIES[d.species].trait}`;
+  $('meMood').textContent=`${m.em} ${m.he}`;
+  for(const s of STATS){
+    const v=Math.round(st[s.k]);
+    barsEl.querySelector(`[data-v="${s.k}"]`).textContent=v;
+    const b=barsEl.querySelector(`[data-b="${s.k}"]`); b.style.width=v+'%';
+    b.style.background = v>60?'var(--green)':v>30?'var(--amber)':'var(--red)';
+  }
+  for(const b of actsEl.children){
+    const k=b.dataset.k, rem = d.cd[k] + ACTIONS[k].cd*MIN - now();
+    const blocked = rem>0 && !F.noCd;
+    b.disabled=blocked; b.querySelector('small').textContent = blocked ? fmt(rem) : 'מוכן';
+  }
+  const a=$('meAvatar').getContext('2d'); a.imageSmoothingEnabled=false; a.clearRect(0,0,16,16);
+  if(stg==='egg') drawRows(a, EGG, {w:'#fff7e6',s:SPECIES[d.species].pal.o}, 8, 14, 1);
+  else drawRows(a, SPECIES[d.species].spr, SPECIES[d.species].pal, 8, 14, 1);
+  renderKV();
+}
+setInterval(renderHUD, 1000);
+
+// ---------- actions & saving ----------
+let writing=false, pendingWrite=null;
+async function savePet(p){
+  pets.set(myId,p); syncEnts(); renderHUD();
+  if(mode==='local'){ try{ localStorage.setItem('pixelyard.pet', JSON.stringify(p)); }catch(e){} return; }
+  if(writing){ pendingWrite=p; return; }
+  writing=true;
+  try{ await fb.set(fb.ref(fb.db,'pets/'+myId), p); }
+  catch(e){ toast('השמירה נכשלה, נסה שוב'); }
+  writing=false;
+  if(pendingWrite){ const q=pendingWrite; pendingWrite=null; savePet(q); }
+}
+function doAction(k){
+  const d=pets.get(myId); if(!d) return;
+  const rem = d.cd[k] + ACTIONS[k].cd*MIN - now();
+  if(rem>0 && !F.noCd) return;
+  const cur=curStats(d), delta=ACTIONS[k].d;
+  for(const s in delta) cur[s]=clamp(cur[s]+delta[s]);
+  const nd={...d, stats:cur, at:now(), cd:{...d.cd, [k]:now()}};
+  animate(myId,k);
+  setPresence({act:{k, t:now()}});
+  savePet(nd);
+}
+
+// ---------- presence (Firebase) ----------
+let fb=null, myPresence={on:true, idle:false, act:null};
+function setPresence(patch){
+  myPresence={...myPresence, ...patch};
+  if(fb && myId) fb.set(fb.ref(fb.db,'status/'+myId), {...myPresence, ts: fb.serverTimestamp()}).catch(()=>{});
+}
+function onStatus(v){
+  online.clear();
+  for(const id in v){
+    const pr=v[id]; if(!pr || typeof pr!=='object') continue;
+    online.set(id, {idle: !!pr.idle});
+    if(id===myId) continue;
+    const a=pr.act, e=ents.get(id);
+    if(a && typeof a==='object' && ACTIONS[a.k] && e){
+      if(e.seenT===undefined){ e.seenT=a.t; }
+      else if(e.seenT!==a.t){ e.seenT=a.t; if(F.mimic) animate(id, a.k); }
+    } else if(e && e.seenT===undefined) e.seenT=null;
+  }
+  renderHUD(); rebuildTags();
+}
+['pointerdown','keydown','touchstart'].forEach(ev=>addEventListener(ev,()=>{ lastInput=now(); if(myIdle){ myIdle=false; setPresence({idle:false}); } },{passive:true}));
+setInterval(()=>{ const idle = now()-lastInput > 90000; if(idle!==myIdle){ myIdle=idle; setPresence({idle}); } }, 5000);
+
+// ---------- init ----------
+const statusLine=$('statusLine');
+function setStatus(s){ statusLine.textContent=s; }
+function renderKV(){
+  $('kv').innerHTML='';
+  const rows=[
+    ['שמירת נתונים', mode==='db' ? 'משותפת (Firebase)' : mode==='local' ? 'מקומית בלבד' : 'מתחבר…'],
+    ['חיבור חי', roomOk ? 'מחובר' : 'לא מחובר'],
+    ['יצורים בחצר', String(ents.size)],
+    ['מחוברים עכשיו', String(1+[...online.keys()].filter(id=>id!==myId).length)],
+  ];
+  for(const [k,v] of rows){ const d=document.createElement('div'); d.innerHTML='<span></span>: <b></b>'; d.children[0].textContent=k; d.children[1].textContent=v; $('kv').appendChild(d); }
+}
+
+function startLocal(reason){
+  mode='local'; myId='local-me';
+  try{ const raw=localStorage.getItem('pixelyard.pet'); const p=raw && cleanPet(JSON.parse(raw)); if(p) pets.set(myId,p); }catch(e){}
+  loaded=true; syncEnts(); renderHUD();
+  setStatus(reason || 'מצב מקומי: היצור נשמר רק בדפדפן הזה.');
+  if(!pets.get(myId)) showOnboard();
+}
+
+async function init(){
+  let F_;
+  try{ F_ = await window.__fbReady; }catch(e){ F_=null; }
+  if(!F_){ startLocal('לא הצלחתי להתחבר לשרת, עברתי למצב מקומי.'); return; }
+  fb=F_;
+  const timer=setTimeout(()=>{ if(!loaded) setStatus('השרת עדיין לא עונה, מנסה להתחבר…'); },10000);
+  let uid=null;
+  try{ const cred = await fb.signInAnonymously(fb.auth); uid=cred.user.uid; }
+  catch(e){ clearTimeout(timer); startLocal('ההתחברות נכשלה, עברתי למצב מקומי.'); return; }
+  myId=uid; mode='db';
+
+  fb.onValue(fb.ref(fb.db,'pets'), snap=>{
+    const v=snap.val()||{}, m=new Map();
+    for(const id in v){ const p=cleanPet(v[id]); if(p) m.set(id,p); }
+    const mine=pets.get(myId), srv=m.get(myId);
+    if(mine && (!srv || srv.at < mine.at) && (writing || pendingWrite)) m.set(myId, mine);
+    pets=m;
+    clearTimeout(timer); if(!loaded){ loaded=true; setStatus(''); }
+    syncEnts(); renderHUD();
+    if(!pets.get(myId)) showOnboard();
+  }, err=>{ clearTimeout(timer); startLocal('אין גישה לנתונים, עברתי למצב מקומי.'); });
+
+  const myStatus=fb.ref(fb.db,'status/'+myId);
+  fb.onValue(fb.ref(fb.db,'.info/connected'), s=>{
+    roomOk = s.val()===true; renderKV();
+    if(roomOk) fb.onDisconnect(myStatus).remove().then(()=>setPresence({})).catch(()=>{});
+  });
+  fb.onValue(fb.ref(fb.db,'status'), snap=>onStatus(snap.val()||{}));
+}
+init();
+
+// ---------- onboarding ----------
+let chosen='cat';
+const grid=$('speciesGrid');
+Object.entries(SPECIES).forEach(([k,s])=>{
+  const b=document.createElement('button'); b.className='sp'+(k===chosen?' on':''); b.dataset.k=k;
+  const c=document.createElement('canvas'); c.width=16; c.height=16; const g=c.getContext('2d'); drawRows(g, s.spr, s.pal, 8, 14, 1);
+  b.appendChild(c); b.insertAdjacentHTML('beforeend', `<span>${s.he}</span><small>${s.trait}</small>`);
+  b.addEventListener('click',()=>{ chosen=k; [...grid.children].forEach(x=>x.classList.toggle('on', x.dataset.k===k)); const n=$('petName'); if(!n.dataset.touched) n.value=s.defName; });
+  grid.appendChild(b);
+});
+$('petName').value=SPECIES.cat.defName;
+$('petName').addEventListener('input',e=>{ e.target.dataset.touched='1'; });
+function showOnboard(){ $('onboard').classList.add('show'); }
+$('hatchBtn').addEventListener('click',()=>{
+  const name=($('petName').value||SPECIES[chosen].defName).trim().slice(0,14) || SPECIES[chosen].defName;
+  const t=now();
+  const owner=($('ownerName').value||'').trim().slice(0,14);
+  const p={species:chosen, name, owner, born:t, at:t, stats:{food:80,joy:80,energy:80,clean:80}, cd:{feed:0,play:0,sleep:0,clean:0}};
+  $('onboard').classList.remove('show');
+  savePet(p);
+  toast('🥚 הביצה שלך בחצר! היא תבקע תוך כרבע שעה.');
+});
+
+// ---------- panel ----------
+const drawer=$('drawer'), backdrop=$('backdrop');
+$('openPanel').onclick=()=>{ drawer.classList.add('open'); backdrop.classList.add('open'); renderKV(); };
+backdrop.onclick=()=>{ drawer.classList.remove('open'); backdrop.classList.remove('open'); };
+$('closePanel').onclick=()=>backdrop.onclick();
+function seg(el, opts, key, after){
+  el.innerHTML='';
+  opts.forEach(([v,label])=>{ const b=document.createElement('button'); b.textContent=label; b.className=F[key]===v?'on':''; b.onclick=()=>{ F[key]=v; seg(el,opts,key,after); after&&after(); }; el.appendChild(b); });
+}
+seg($('segLayout'), [['yard','🏡 חצר משותפת'],['building','🏢 חלונות בבניין']], 'layout');
+seg($('segLight'), [['auto','לפי השעה'],['day','יום'],['dusk','שקיעה'],['night','לילה']], 'light');
+seg($('segStage'), [['auto','אוטומטי'],['egg','ביצה'],['baby','תינוק'],['teen','צעיר'],['adult','בוגר']], 'stage', renderHUD);
+const TOG=[
+  ['mimic','חיקוי פעולות','היצור עושה מול כולם את מה שהשחקן שלו עושה'],
+  ['offlineSleep','לא מחוברים ישנים','יצור של שחקן שלא מחובר נרדם בפינה'],
+  ['tags','תגיות שם','שם היצור, הבעלים ונקודת חיבור'],
+  ['idleYawn','בועת "…" בחוסר פעילות','אחרי 90 שניות בלי מגע'],
+  ['noCd','ביטול זמני המתנה','לבדיקות בלבד'],
+];
+TOG.forEach(([k,label,sub])=>{
+  const row=document.createElement('div'); row.className='sw';
+  row.innerHTML=`<div><span></span><small></small></div><button class="tog"></button>`;
+  row.querySelector('span').textContent=label; row.querySelector('small').textContent=sub;
+  const t=row.querySelector('.tog'); t.classList.toggle('on',F[k]);
+  t.onclick=()=>{ F[k]=!F[k]; t.classList.toggle('on',F[k]); renderHUD(); };
+  $('toggles').appendChild(row);
+});
+STATS.forEach(s=>{
+  const r=document.createElement('div'); r.className='slider';
+  r.innerHTML=`<span>${s.he}</span><input type="range" min="0" max="100"><b></b>`;
+  const inp=r.querySelector('input'), out=r.querySelector('b');
+  inp.value=F.ov[s.k]; out.textContent=F.ov[s.k];
+  inp.oninput=()=>{ if(!F.ovOn){ const cur=myId&&pets.get(myId)?curStats(pets.get(myId)):F.ov; F.ov={...cur}; F.ovOn=true; syncSliders(); } F.ov[s.k]=+inp.value; out.textContent=inp.value; renderHUD(); };
+  r.dataset.k=s.k; $('sliders').appendChild(r);
+});
+function syncSliders(){ for(const r of $('sliders').children){ const k=r.dataset.k; r.querySelector('input').value=Math.round(F.ov[k]); r.querySelector('b').textContent=Math.round(F.ov[k]); } }
+$('resetOv').onclick=()=>{ F.ovOn=false; renderHUD(); toast('חזרה למדדים האמיתיים'); };
+
+let botN=0;
+function addBot(on){
+  const keys=Object.keys(SPECIES), sp=keys[(Math.random()*4)|0];
+  const id='bot-'+(++botN)+'-'+Math.random().toString(36).slice(2,6);
+  const stats={}; STATS.forEach(s=>stats[s.k]=20+Math.random()*80);
+  bots.set(id,{species:sp, name:BOT_NAMES[(botN-1)%BOT_NAMES.length], born:now()-30*HOUR, at:now(), stats, cd:{},
+    online:on, fixedStage:['baby','teen','adult'][(Math.random()*3)|0]});
+  syncEnts(); renderHUD();
+}
+$('addBotOn').onclick=()=>addBot(true);
+$('addBotOff').onclick=()=>addBot(false);
+$('clearBots').onclick=()=>{ bots.clear(); syncEnts(); renderHUD(); };
+let resetArm=0;
+$('resetPet').onclick=async e=>{
+  const b=e.currentTarget;
+  if(now()-resetArm>3000){ resetArm=now(); b.textContent='בטוח? לחץ שוב למחיקה'; setTimeout(()=>b.textContent='איפוס היצור שלי',3000); return; }
+  resetArm=0; b.textContent='איפוס היצור שלי';
+  pets.delete(myId); syncEnts(); renderHUD();
+  if(mode==='local'){ try{ localStorage.removeItem('pixelyard.pet'); }catch(err){} }
+  else { try{ await fb.remove(fb.ref(fb.db,'pets/'+myId)); }catch(err){ toast('המחיקה נכשלה'); } }
+  backdrop.click(); showOnboard();
+};
+
+// ---------- toast ----------
+let toastT;
+function toast(msg){ const t=$('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),3200); }
+})();
+</script>
+</body>
+</html>

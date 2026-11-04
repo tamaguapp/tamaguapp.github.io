@@ -1,1 +1,6 @@
-# tamaguapp.github.io
+# חצר פיקסל
+
+משחק טמגוצ׳י מרובה משתתפים בפיקסל-ארט. כל שחקן מגדל יצור, וכולם חיים באותה חצר.
+
+- אתר: GitHub Pages
+- נתונים ונוכחות: Firebase Realtime Database
