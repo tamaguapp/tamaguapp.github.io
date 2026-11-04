@@ -45,6 +45,35 @@
   .place.locked{opacity:.8}.place.locked .pc{background:#6d6587;color:#fff}
   #eggBar{background:linear-gradient(90deg,#ffb84d,#ff6b7a)!important}
   #warmBtn:disabled{background:#5a4d78;color:#cfc5e8}
+  #raceTags{position:absolute;inset:0;pointer-events:none}
+  #raceOverlay{position:absolute;inset:0;display:none;align-items:center;justify-content:center;pointer-events:none;
+    font-weight:800;font-size:64px;color:#fff;text-shadow:0 4px 0 #2b2140,0 0 18px rgba(0,0,0,.4)}
+  #raceOverlay.show{display:flex}
+  #raceOverlay.small{font-size:28px}
+  .rtag{position:absolute;transform:translate(-50%,-100%);font-size:10px;background:rgba(18,12,34,.8);color:#fff;padding:0 6px;border-radius:8px;white-space:nowrap}
+  .rtag.me{background:rgba(255,209,102,.95);color:#2b2140;font-weight:600}
+  .race-title{font-weight:800;font-size:17px;margin-bottom:4px}
+  .race-sub{font-size:12px;color:var(--muted);margin-bottom:10px;line-height:1.5}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 12px}
+  .chip{font-size:11px;background:var(--card2);border:1px solid var(--line);padding:3px 8px;border-radius:99px}
+  .chip b{color:var(--green)}
+  .rbtns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .rbtn{background:var(--gold);color:#2b2140;border:2px solid var(--shadow);box-shadow:0 4px 0 var(--shadow);border-radius:10px;padding:12px 6px;font-weight:800;font-size:15px}
+  .rbtn small{display:block;font-weight:600;font-size:11px;opacity:.75;margin-top:2px}
+  .rbtn.alt{background:#7bdc6a}
+  .rbtn.ghost{background:var(--card2);color:var(--ink)}
+  .rbtn:disabled{background:#5a4d78;color:#cfc5e8}
+  .rbtn:active:not(:disabled){transform:translateY(3px);box-shadow:0 1px 0 var(--shadow)}
+  .plist{display:flex;flex-direction:column;gap:6px;margin:10px 0}
+  .prow{display:flex;align-items:center;gap:8px;background:var(--card2);border-radius:8px;padding:6px 10px;font-size:13px}
+  .prow canvas{width:28px;height:28px;image-rendering:pixelated}
+  .prow .pos{font-weight:800;width:22px;color:var(--gold)}
+  .prow .tm{margin-inline-start:auto;color:var(--muted);font-size:12px}
+  .prow.me{outline:2px solid var(--gold)}
+  .race-ctrl{display:grid;grid-template-columns:2fr 1fr;gap:8px}
+  .race-ctrl .rbtn{padding:18px 6px;font-size:18px}
+  .race-pos{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin-bottom:8px}
+  .race-pos b{color:var(--ink)}
   .status-line{font-size:11px;color:var(--muted);margin:8px 2px 0;min-height:14px}
 
   .card{background:var(--card);border:2px solid var(--line);border-radius:12px;padding:12px;margin-top:14px}
@@ -125,9 +154,12 @@
     <canvas id="scene"></canvas>
     <div id="tags"></div>
     <div id="mapLabels"></div>
+    <div id="raceTags"></div>
+    <div id="raceOverlay"></div>
   </div>
   <div class="status-line" id="statusLine">מתחבר…</div>
 
+  <div class="card" id="raceCard" style="display:none"></div>
   <div class="card" id="meCard" style="display:none">
     <div class="me-head">
       <canvas id="meAvatar" width="16" height="16"></canvas>
@@ -253,7 +285,7 @@ const STAGES = [
 const STAGE_BY = Object.fromEntries(STAGES.map(s=>[s.k,s]));
 const MIN = 60000, HOUR = 3600000;
 const HATCH_BASE = 5*MIN, WARM_MAX = 9, WARM_STEP = 20000, WARM_CD = 3000; // 5 min, down to 2 min fully warmed
-const PLACES = { nest:{he:'חדר קינון',em:'🥚'}, yard:{he:'החצר',em:'🏡'}, race:{he:'מגרש המירוצים',em:'🏁',locked:true} };
+const PLACES = { nest:{he:'חדר קינון',em:'🥚'}, yard:{he:'החצר',em:'🏡'}, race:{he:'מגרש המירוצים',em:'🏁'} };
 const MAPR = {
   top:{ nest:{x:22,y:40,w:104,h:80}, yard:{x:176,y:26,w:128,h:92}, race:{x:66,y:134,w:188,h:60} },
   side:{ nest:{x:10,y:84,w:94,h:96}, yard:{x:112,y:74,w:96,h:106}, race:{x:216,y:56,w:96,h:124} },
@@ -299,6 +331,7 @@ function cleanPet(raw){
     species, name: String(raw.name||SPECIES[species].defName).slice(0,14),
     owner: String(raw.owner||'').slice(0,14),
     warm: Math.max(0, Math.min(WARM_MAX, Math.floor(Number(raw.warm)||0))),
+    wins: Math.max(0, Math.floor(Number(raw.wins)||0)),
     born: Number(raw.born)||now(), at: Number(raw.at)||now(), stats, cd,
   };
 }
@@ -691,8 +724,6 @@ function drawMapTop(t){
   for(let i=0;i<6;i++) for(let j=0;j<2;j++) rect(r.x+r.w/2+j*3,r.y+i*2.6,3,3,(i+j)%2?'#fff':'#2b2140');
   nightTint(0);
   if(phase()!=='day'){ rect(nx-5,n.y+54,10,16,'#ffcf6e'); }
-  ctx.fillStyle='rgba(20,14,40,.45)'; ctx.fillRect(r.x,r.y,r.w,r.h);
-  drawLock(r.x+r.w/2, r.y+r.h/2);
 }
 function drawMapSide(t){
   const R=MAPR.side, G=180;
@@ -721,8 +752,6 @@ function drawMapSide(t){
   for(let i=0;i<4;i++){ const fx=r.x+10+i*26; rect(fx,G-104,2,20,'#3b2a50'); rect(fx+2,G-104,10,6,i%2?'#ff5d6c':'#ffd166'); }
   for(let i=0;i<8;i++) for(let j=0;j<2;j++) rect(r.x+r.w/2-12+i*3,G-30+j*3,3,3,(i+j)%2?'#fff':'#2b2140');
   nightTint(G-110);
-  ctx.fillStyle='rgba(20,14,40,.45)'; ctx.fillRect(r.x,G-108,r.w,108);
-  drawLock(r.x+r.w/2, G-46);
 }
 const mapLabelsEl=document.getElementById('mapLabels'); const placeEls={};
 Object.entries(PLACES).forEach(([k,pl])=>{
@@ -737,14 +766,14 @@ function placeMapLabels(){
   mapLabelsEl.style.display = show ? '' : 'none';
   if(!show) return;
   const R=MAPR[F.mapStyle];
-  const counts={nest:eggEnts().length, yard:petEnts().length};
+  const counts={nest:eggEnts().length, yard:petEnts().length, race: Object.keys(lobby).length ? Object.keys(lobby).length+' בהמתנה' : 'פתוח'};
   for(const k in placeEls){
     const r=R[k], el=placeEls[k];
     const top = F.mapStyle==='side' ? (k==='race'? 180-112 : k==='yard'? 180-96 : 180-90) : (k==='race' ? r.y+r.h-3 : r.y-2);
     const sw=mapLabelsEl.clientWidth||1, hw=el.offsetWidth/2;
     const px=Math.max(hw+4, Math.min(sw-hw-4, (r.x+r.w/2)/W*sw));
     el.style.left=px+'px'; el.style.top=(top/H*100)+'%';
-    el.querySelector('.pc').textContent = PLACES[k].locked ? '🔒 בקרוב' : String(counts[k]||0);
+    el.querySelector('.pc').textContent = PLACES[k].locked ? '🔒 בקרוב' : String(counts[k]??0);
   }
 }
 function goPlace(k){
@@ -755,8 +784,417 @@ function setView(v){
   view=v;
   try{ history.replaceState(null,'', v==='map' ? location.pathname : '#'+v); }catch(e){}
   $('backMap').style.display = v==='map' ? 'none' : '';
+  if(v!=='race' && race && race.mode==='multi' && race.state!=='results'){ /* keep running in background */ }
+  if(v!=='race' && raceUI==='waiting') leaveLobby();
+  renderRaceCard();
   renderHUD();
 }
+
+
+// =====================================================================
+// ---------- RACE ----------
+// =====================================================================
+const TRACK_L=3400, GROUND=170, BASE_SPEED=80, GRAV=950, JUMP_V=290;
+const POWERS={ boost:{em:'⚡',he:'האצה'}, shield:{em:'🛡️',he:'מגן'}, slime:{em:'🟢',he:'רפש'} };
+let race=null, raceUI='lobby', lobby={}, raceCur=null, liveMap={}, lastRaceId=null, serverOffset=0, raceResults=null;
+const serverNow=()=>Date.now()+serverOffset;
+function rng(seed){ return ()=>{ seed|=0; seed=seed+0x6D2B79F5|0; let t=Math.imul(seed^seed>>>15,1|seed); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
+function makeTrack(seed){
+  const r=rng(seed), obs=[]; let x=280;
+  while(x<TRACK_L-160){
+    const k=r(); const type = k<0.52?'hurdle': k<0.72?'mud':'box';
+    obs.push({type, x, w: type==='mud'?46:8, id:obs.length});
+    x += (type==='mud'?70:0) + 100 + r()*90;
+  }
+  return obs;
+}
+function raceTraits(st, species){
+  st = st || {food:60,joy:60,energy:60,clean:60};
+  const f=v=>Math.sqrt(Math.max(0,Math.min(100,v))/100); // diminishing returns
+  return {
+    top:   1 + 0.04*f(st.food)   + (species==='dragon'?0.02:0),
+    jump:  1 + 0.05*f(st.joy)    + (species==='bunny'?0.05:0),
+    start:     0.12*f(st.energy) + (species==='cat'?0.08:0),
+    grit:      0.25*f(st.clean)  + (species==='frog'?0.2:0),
+    sad: ((st.food+st.joy+st.energy+st.clean)/4) <= 30,
+  };
+}
+function traitChips(tr){
+  const pct=v=>'+'+Math.round(v*100)+'%';
+  return [['מהירות',pct(tr.top-1)],['קפיצה',pct(tr.jump-1)],['זינוק',pct(tr.start)],['עמידות',pct(tr.grit)]];
+}
+function newRunner(o){
+  return Object.assign({x:0,y:0,vy:0,v:0,hit:new Set(),got:new Set(),stumbleUntil:0,boostUntil:0,slowUntil:0,shieldUntil:0,
+    power:null,finishMs:0,lane:0,plan:{},botUse:0, anim:Math.random()*10}, o);
+}
+function myPetReady(){ const d=myId && pets.get(myId); return d && stageOf(myId,true)!=='egg' ? d : null; }
+
+// ----- solo -----
+function startSolo(){
+  const d=myPetReady(); if(!d) return;
+  const others=[...pets.entries()].filter(([id,p])=>id!==myId && stageOf(id,true)!=='egg');
+  const pool=[]; for(const [id,p] of others) pool.push({name:p.name, species:p.species, st:curStats(p)});
+  const keys=Object.keys(SPECIES);
+  const freeNames=BOT_NAMES.filter(n=>!pool.some(p=>p.name===n) && n!==d.name).sort(()=>Math.random()-0.5);
+  while(pool.length<3) pool.push({name:freeNames.pop()||'בוט', species:keys[(Math.random()*4)|0], st:{food:40+Math.random()*60,joy:40+Math.random()*60,energy:40+Math.random()*60,clean:40+Math.random()*60}});
+  pool.sort(()=>Math.random()-0.5);
+  const runners=[newRunner({id:myId,name:d.name,species:d.species,isMe:true,tr:raceTraits(statsOf(myId),d.species)})];
+  pool.slice(0,3).forEach((b,i)=>runners.push(newRunner({id:'bot'+i,name:b.name,species:b.species,isBot:true,skill:0.8+Math.random()*0.15,tr:raceTraits(b.st,b.species)})));
+  runners.forEach((r,i)=>r.lane=i);
+  const seed=(Math.random()*1e9)|0;
+  race={mode:'solo', id:'solo-'+seed, seed, track:makeTrack(seed), startAt:now()+3500, runners, state:'countdown', clock:()=>now()};
+  raceUI='racing'; renderRaceCard();
+}
+
+// ----- multiplayer -----
+function joinLobby(){
+  const d=myPetReady(); if(!d || !fb || mode!=='db'){ toast('מצב משותף לא זמין כרגע'); return; }
+  const tr=raceTraits(statsOf(myId), d.species);
+  const r=fb.ref(fb.db,'races/lobby/'+myId);
+  fb.onDisconnect(r).remove().catch(()=>{});
+  fb.set(r,{name:d.name, owner:d.owner||'', species:d.species, tr:{top:tr.top,jump:tr.jump,start:tr.start,grit:tr.grit}, ts:fb.serverTimestamp()}).catch(()=>toast('ההצטרפות נכשלה'));
+  raceUI='waiting'; renderRaceCard();
+}
+function leaveLobby(){
+  if(fb && myId) fb.remove(fb.ref(fb.db,'races/lobby/'+myId)).catch(()=>{});
+  if(raceUI==='waiting'){ raceUI='lobby'; renderRaceCard(); }
+}
+function lobbyHost(){
+  const ids=Object.keys(lobby).filter(id=>lobby[id] && typeof lobby[id].ts==='number');
+  ids.sort((a,b)=>lobby[a].ts-lobby[b].ts || (a<b?-1:1));
+  return ids[0]||null;
+}
+function hostStart(){
+  const ids=Object.keys(lobby).slice(0,4); if(ids.length<2) return;
+  const players={}; ids.forEach(id=>{ const l=lobby[id]; players[id]={name:String(l.name||'').slice(0,14), species:SPECIES[l.species]?l.species:'cat', owner:String(l.owner||'').slice(0,14)}; });
+  const seed=(Math.random()*1e9)|0;
+  fb.set(fb.ref(fb.db,'races/current'),{id:'r'+seed, seed, startAt:serverNow()+4500, players}).catch(()=>toast('התחלת המירוץ נכשלה'));
+}
+function maybeStartMulti(cur){
+  if(!cur || !cur.players || !cur.players[myId] || cur.id===lastRaceId) return;
+  if(serverNow() > cur.startAt + 90000) return;
+  const d=myPetReady(); if(!d) return;
+  lastRaceId=cur.id;
+  fb.remove(fb.ref(fb.db,'races/lobby/'+myId)).catch(()=>{});
+  const ids=Object.keys(cur.players).sort();
+  const runners=ids.map((id,i)=>{ const p=cur.players[id];
+    return newRunner({id, name:id===myId?d.name:p.name, species:id===myId?d.species:p.species, isMe:id===myId, remote:id!==myId,
+      tr: id===myId ? raceTraits(statsOf(myId),d.species) : raceTraits(null,p.species), lane:i}); });
+  race={mode:'multi', id:cur.id, seed:cur.seed, track:makeTrack(cur.seed), startAt:cur.startAt, runners, state:'countdown', clock:()=>serverNow(), lastSend:0, lastEvT:null};
+  raceUI='racing';
+  if(view!=='race') setView('race'); else renderRaceCard();
+  toast('🏁 המירוץ מתחיל!');
+}
+function sendLive(force){
+  if(!race || race.mode!=='multi') return;
+  const me=race.runners.find(r=>r.isMe); const t=now();
+  if(!force && t-race.lastSend<110) return;
+  race.lastSend=t;
+  fb.set(fb.ref(fb.db,'races/live/'+myId),{id:race.id, x:Math.round(me.x), y:Math.round(me.y), f:me.finishMs||0, t:serverNow()}).catch(()=>{});
+}
+function onRaceEvent(ev){
+  if(!race || !ev || ev.rid!==race.id || ev.t===race.lastEvT) return;
+  race.lastEvT=ev.t;
+  const me=race.runners.find(r=>r.isMe); hitBySlime(me);
+}
+function initRaceSync(){
+  fb.onValue(fb.ref(fb.db,'.info/serverTimeOffset'), s=>{ serverOffset=Number(s.val())||0; });
+  fb.onValue(fb.ref(fb.db,'races/lobby'), s=>{ lobby=s.val()||{}; if(raceUI==='waiting'||raceUI==='lobby') renderRaceCard(); });
+  fb.onValue(fb.ref(fb.db,'races/current'), s=>{ raceCur=s.val(); maybeStartMulti(raceCur); });
+  fb.onValue(fb.ref(fb.db,'races/live'), s=>{ liveMap=s.val()||{}; });
+  fb.onValue(fb.ref(fb.db,'races/events/'+myId), s=>onRaceEvent(s.val()));
+}
+
+// ----- physics -----
+function raceJump(){
+  if(!race || race.state!=='running') return;
+  const me=race.runners.find(r=>r.isMe); if(!me || me.finishMs) return;
+  if(me.y<=0.5){ me.vy=JUMP_V*me.tr.jump; }
+}
+function usePower(r){
+  if(!r || !r.power || !race || race.state!=='running') return;
+  const t=race.clock(), k=r.power; r.power=null;
+  if(k==='boost') r.boostUntil=t+1600;
+  else if(k==='shield') r.shieldUntil=t+5000;
+  else if(k==='slime'){
+    const ahead=race.runners.filter(o=>o!==r && o.x>r.x && !o.finishMs).sort((a,b)=>a.x-b.x)[0];
+    if(!ahead){ if(r.isMe) toast('אין אף אחד לפניך 😎'); return; }
+    if(race.mode==='multi' && ahead.remote){ fb.set(fb.ref(fb.db,'races/events/'+ahead.id),{from:myId, t:serverNow(), rid:race.id}).catch(()=>{}); ahead.splat=now(); }
+    else hitBySlime(ahead);
+    if(r.isMe) toast('🟢 זרקת רפש על '+ahead.name+'!');
+  }
+  if(r.isMe) renderRaceCard();
+}
+function hitBySlime(r){
+  if(!r || !race) return; const t=race.clock();
+  if(r.shieldUntil>t){ r.shieldUntil=0; if(r.isMe) toast('🛡️ המגן חסם רפש!'); return; }
+  r.slowUntil=t+1300*(1-r.tr.grit*0.6); r.splat=now();
+  if(r.isMe) toast('🟢 אוי! מישהו זרק עליך רפש');
+}
+function rollPower(r){
+  const order=race.runners.slice().sort((a,b)=>b.x-a.x), pos=order.indexOf(r), last=pos===order.length-1, first=pos===0;
+  const q=Math.random();
+  if(last) return q<0.5?'boost':q<0.8?'slime':'shield';
+  if(first) return q<0.5?'shield':q<0.8?'slime':'boost';
+  return q<0.34?'boost':q<0.67?'slime':'shield';
+}
+function stepRunner(r, dt, el){
+  if(r.finishMs) { r.v=0; return; }
+  const t=race.clock();
+  let sp=BASE_SPEED*r.tr.top*(r.tr.sad?0.97:1);
+  if(el<2000) sp*=1+r.tr.start;
+  if(r.boostUntil>t) sp*=1.5;
+  if(r.stumbleUntil>t) sp*=0.35;
+  if(r.slowUntil>t) sp*=0.55;
+  const onGround=r.y<=0.5;
+  for(const o of race.track){
+    if(o.x>r.x+12) break;
+    if(o.type==='mud' && onGround && r.x>=o.x && r.x<=o.x+o.w) sp*=1-0.4*(1-r.tr.grit);
+    if(o.type==='hurdle' && !r.hit.has(o.id) && Math.abs(r.x-o.x)<4 && r.y<13){
+      r.hit.add(o.id);
+      if(r.shieldUntil>t){ r.shieldUntil=0; }
+      else { r.stumbleUntil=t+700*(1-r.tr.grit); r.vy=0; }
+    }
+    if(o.type==='box' && !r.got.has(o.id) && Math.abs(r.x-o.x)<7 && r.y<36){
+      r.got.add(o.id);
+      if(!r.power){ r.power=rollPower(r); if(r.isMe){ renderRaceCard(); } else if(r.isBot){ r.botUse=t+500+Math.random()*1800; } }
+    }
+  }
+  r.v += (sp-r.v)*Math.min(1,dt*6);
+  r.x += r.v*dt;
+  r.vy -= GRAV*dt; r.y += r.vy*dt; if(r.y<0){ r.y=0; r.vy=0; }
+  if(r.x>=TRACK_L){ r.x=TRACK_L; r.finishMs=Math.max(1, el); if(r.isMe){ sendLive(true); renderRaceCard(); } }
+}
+function botThink(r){
+  if(r.finishMs) return;
+  const t=race.clock();
+  const next=race.track.find(o=>o.type==='hurdle' && o.x>r.x && !r.hit.has(o.id));
+  if(next){
+    if(r.plan[next.id]===undefined) r.plan[next.id] = Math.random()<r.skill ? 20+Math.random()*10 : (Math.random()<0.5? 4 : 48);
+    const d=next.x-r.x;
+    if(r.y<=0.5 && d<=r.plan[next.id] && d>0) r.vy=JUMP_V*r.tr.jump;
+  }
+  const box=race.track.find(o=>o.type==='box' && o.x>r.x && !r.got.has(o.id));
+  if(box && r.y<=0.5 && box.x-r.x<26 && box.x-r.x>18 && Math.random()<0.02) r.vy=JUMP_V*r.tr.jump*0.6;
+  if(r.power && t>r.botUse) usePower(r);
+}
+function stepRace(dt){
+  if(!race) return;
+  const el=race.clock()-race.startAt;
+  if(race.state==='countdown'){ if(el>=0){ race.state='running'; renderRaceCard(); } else return; }
+  if(race.state!=='running') return;
+  for(const r of race.runners){
+    if(r.remote){
+      const L=liveMap[r.id];
+      if(L && L.id===race.id){
+        const age=Math.min(300, Math.max(0, serverNow()-L.t));
+        const tx = L.f ? TRACK_L : Math.min(TRACK_L, L.x + BASE_SPEED*age/1000);
+        r.x += (tx-r.x)*Math.min(1,dt*10); r.y += ((L.y||0)-r.y)*Math.min(1,dt*12);
+        if(L.f && !r.finishMs) r.finishMs=L.f;
+      }
+      continue;
+    }
+    if(r.isBot) botThink(r);
+    stepRunner(r, dt, el);
+  }
+  sendLive(false);
+  // end conditions
+  const me=race.runners.find(r=>r.isMe);
+  const done=race.runners.filter(r=>r.finishMs);
+  const firstDone=done.length ? Math.min(...done.map(r=>r.finishMs)) : 0;
+  const allDone=done.length===race.runners.length;
+  const timeout = (firstDone && el>firstDone+(race.mode==='multi'?20000:8000)) || el>150000;
+  if(allDone || timeout) endRace();
+}
+function endRace(){
+  const order=race.runners.slice().sort((a,b)=>{
+    if(a.finishMs && b.finishMs) return a.finishMs-b.finishMs;
+    if(a.finishMs) return -1; if(b.finishMs) return 1; return b.x-a.x;
+  });
+  race.state='results'; raceUI='results';
+  raceResults={mode:race.mode, order:order.map(r=>({id:r.id,name:r.name,species:r.species,isMe:r.isMe,ms:r.finishMs,bot:r.isBot}))};
+  const myPos=order.findIndex(r=>r.isMe);
+  // tired & hungry after a race; a multiplayer win earns a crown
+  const d=pets.get(myId);
+  if(d){
+    const cur=curStats(d); cur.energy=clamp(cur.energy-10); cur.food=clamp(cur.food-5);
+    const nd={...d, stats:cur, at:now()};
+    if(race.mode==='multi' && myPos===0 && race.runners.length>1) nd.wins=(d.wins||0)+1;
+    savePet(nd);
+  }
+  if(race.mode==='multi' && fb) fb.remove(fb.ref(fb.db,'races/live/'+myId)).catch(()=>{});
+  setTimeout(()=>{ if(race && race.state==='results'){ race=null; } }, 50);
+  renderRaceCard();
+}
+
+// ----- drawing -----
+const RUNNER_COLORS=['#ffd166','#7bdc6a','#ff8fa3','#7fc8ff'];
+function drawRaceBg(t, cam){
+  const ph=phase(), cols=SKY[ph], bh=Math.ceil(GROUND/cols.length);
+  cols.forEach((c,i)=>rect(0,i*bh,W,bh+1,c));
+  if(ph==='night'){ for(let i=0;i<30;i++){ const h=hash('rs'+i); rect(h%W,(h>>>9)%100,1,1,'#fff8d6'); } }
+  // far mountains (parallax)
+  for(let x=0;x<W;x+=4){ const wx=x+cam*0.15; const h=30+Math.round(Math.sin(wx/50)*12+Math.sin(wx/23)*5); rect(x,GROUND-50-h,4,h+50,'#6b88c9'); }
+  for(let x=0;x<W;x+=4){ const wx=x+cam*0.35; const h=18+Math.round(Math.sin(wx/34)*7+Math.sin(wx/11)*3); rect(x,GROUND-h-10,4,h+10,'#5aa356'); }
+  // crowd fence
+  for(let x=-((cam*0.7)%14);x<W;x+=14){ rect(x,GROUND-14,4,14,'#e0a66d'); }
+  rect(0,GROUND-10,W,2,'#c98d5a'); rect(0,GROUND-5,W,2,'#c98d5a');
+  // track
+  rect(0,GROUND,W,H-GROUND,'#c9774a'); rect(0,GROUND,W,2,'#e39a68');
+  for(let x=-(cam%20);x<W;x+=20) rect(x,GROUND+14,10,1,'#e8b48c');
+  rect(0,GROUND+20,W,H-GROUND-20,'#79c257');
+  // distance markers
+  for(let m=0;m<=TRACK_L;m+=500){ const sx=m-cam; if(sx<-10||sx>W+10) continue; rect(sx,GROUND-22,2,22,'#fff'); rect(sx-6,GROUND-28,14,7,'#2b2140'); }
+  // finish line
+  const fx=TRACK_L-cam;
+  if(fx>-20 && fx<W+20){
+    for(let i=0;i<10;i++) for(let j=0;j<2;j++) rect(fx+j*3, GROUND+i*3, 3,3,(i+j)%2?'#fff':'#2b2140');
+    rect(fx-12,GROUND-46,2,46,'#3b2a50'); rect(fx+18,GROUND-46,2,46,'#3b2a50');
+    rect(fx-12,GROUND-50,32,8,'#ff5d6c');
+  }
+}
+function drawObstacles(cam){
+  for(const o of race.track){
+    const sx=o.x-cam; if(sx<-60||sx>W+60) continue;
+    if(o.type==='hurdle'){ rect(sx-4,GROUND-12,2,12,'#fff'); rect(sx+2,GROUND-12,2,12,'#fff'); rect(sx-5,GROUND-12,10,3,'#ff5d6c'); rect(sx-5,GROUND-7,10,2,'#ff5d6c'); }
+    else if(o.type==='mud'){ rect(sx,GROUND,o.w,5,'#6b4423'); rect(sx+4,GROUND-1,o.w-8,2,'#7d5530'); for(let k=0;k<4;k++) rect(sx+6+k*10,GROUND+1,3,1,'#8f6640'); }
+    else if(o.type==='box'){
+      const me=race.runners.find(r=>r.isMe); if(me && me.got.has(o.id)) continue;
+      const by=GROUND-30+Math.round(Math.sin(now()/250+o.id)*2);
+      rect(sx-6,by-12,12,12,'#ffd166'); rect(sx-6,by-12,12,2,'#fff1b8'); rect(sx-6,by-2,12,2,'#c99a2e');
+      rect(sx-2,by-10,4,2,'#2b2140'); rect(sx+1,by-8,2,2,'#2b2140'); rect(sx-1,by-6,2,2,'#2b2140'); rect(sx-1,by-3,2,1,'#2b2140');
+    }
+  }
+}
+const raceTagsEl=document.getElementById('raceTags'); const raceTagEls=new Map();
+function drawRace(t){
+  if(!race){ drawRaceIdle(t); return; }
+  const me=race.runners.find(r=>r.isMe)||race.runners[0];
+  const cam=Math.min(TRACK_L-W+60, me.x-110);
+  race.cam=cam;
+  drawRaceBg(t, cam);
+  drawObstacles(cam);
+  const ct=race.clock();
+  const list=race.runners.slice().sort((a,b)=>b.lane-a.lane);
+  for(const r of list){
+    const sx=r.x-cam, base=GROUND-2-r.lane*5+6;
+    if(sx<-30||sx>W+30){ r.tagX=null; continue; }
+    const running = race.state==='running' && !r.finishMs;
+    const bob = running && r.y<=0.5 ? (((now()/90+r.anim)|0)%2) : 0;
+    rect(sx-8,base,16,2,'rgba(0,0,0,.2)');
+    const sp=SPECIES[r.species]||SPECIES.cat;
+    const stumble=r.stumbleUntil>ct;
+    drawRows(ctx, sp.spr, sp.pal, sx, base-r.y-bob, 2, false, false);
+    const top=base-r.y-24-bob;
+    if(r.boostUntil>ct){ for(let i=0;i<3;i++){ const q=((now()/120)+i/3)%1; ctx.globalAlpha=1-q; icon('flame', sx-14-q*10, base-r.y-6+i*2, 1); } ctx.globalAlpha=1; }
+    if(r.shieldUntil>ct){ ctx.strokeStyle='rgba(127,200,255,.9)'; ctx.lineWidth=1; ctx.strokeRect(Math.round(sx-15),Math.round(top-3),30,30); }
+    if(stumble){ for(let i=0;i<3;i++){ const a=now()/150+i*2.1; rect(sx+Math.cos(a)*10, top-2+Math.sin(a)*3, 2,2,'#ffe066'); } }
+    if((r.slowUntil>ct) || (r.splat && now()-r.splat<900)){ rect(sx-8,top+4,16,4,'rgba(123,220,106,.8)'); rect(sx-4,top+8,3,4,'rgba(123,220,106,.8)'); }
+    r.tagX=sx; r.tagY=top-2;
+  }
+  // progress bar
+  rect(20,6,280,3,'rgba(0,0,0,.35)');
+  race.runners.forEach((r,i)=>{ const px=20+Math.min(1,r.x/TRACK_L)*280; rect(px-2,4,5,7, r.isMe?'#ffd166':RUNNER_COLORS[(i%3)+1]); });
+  rect(298,3,3,9,'#fff');
+  // overlay text
+  const ov=$('raceOverlay'); const el=ct-race.startAt;
+  if(race.state==='countdown'){ ov.className='show'; ov.textContent=String(Math.ceil(-el/1000)); }
+  else if(race.state==='running' && el<800){ ov.className='show'; ov.textContent='!צא'; }
+  else if(me && me.finishMs && race.state==='running'){ ov.className='show small'; ov.textContent='🏁 סיימת! מחכים לשאר…'; }
+  else { ov.className=''; }
+}
+function drawRaceIdle(t){
+  const cam=(t*30)%TRACK_L;
+  drawRaceBg(t, 0);
+  $('raceOverlay').className='';
+  for(const [,el] of raceTagEls) el.style.display='none';
+}
+function placeRaceTags(){
+  const show = view==='race' && race;
+  raceTagsEl.style.display = show ? '' : 'none';
+  if(!show) return;
+  const ids=new Set(race.runners.map(r=>r.id));
+  for(const [id,el] of raceTagEls) if(!ids.has(id)){ el.remove(); raceTagEls.delete(id); }
+  for(const r of race.runners){
+    let el=raceTagEls.get(r.id);
+    if(!el){ el=document.createElement('div'); el.className='rtag'+(r.isMe?' me':''); el.textContent=r.name+(r.isBot?' · מחשב':''); raceTagsEl.appendChild(el); raceTagEls.set(r.id,el); }
+    if(r.tagX==null){ el.style.display='none'; continue; }
+    el.style.display=''; el.style.left=(r.tagX/W*100)+'%'; el.style.top=(r.tagY/H*100)+'%';
+  }
+}
+
+// ----- race card UI -----
+function petCanvas(species){ const c=document.createElement('canvas'); c.width=16; c.height=16; const g=c.getContext('2d'); const sp=SPECIES[species]||SPECIES.cat; drawRows(g, sp.spr, sp.pal, 8, 14, 1); return c; }
+function fmtMs(ms){ return (ms/1000).toFixed(1)+' שנ׳'; }
+function renderRaceCard(){
+  const card=$('raceCard');
+  if(view!=='race'){ card.style.display='none'; return; }
+  card.style.display='';
+  card.innerHTML='';
+  const h=(tag,cls,txt)=>{ const e=document.createElement(tag); if(cls) e.className=cls; if(txt!=null) e.textContent=txt; return e; };
+  const d=myPetReady();
+  if(raceUI==='racing' && race){
+    const me=race.runners.find(r=>r.isMe);
+    const order=race.runners.slice().sort((a,b)=>(a.finishMs&&b.finishMs)?a.finishMs-b.finishMs:(b.finishMs?1:a.finishMs?-1:b.x-a.x));
+    const pos=h('div','race-pos'); pos.innerHTML='<span>מקום <b></b></span><span>'+(race.mode==='solo'?'🤖 מול המחשב':'👥 כולם נגד כולם')+'</span>';
+    pos.querySelector('b').textContent=(order.indexOf(me)+1)+'/'+race.runners.length; card.appendChild(pos);
+    race.posEl=pos.querySelector('b');
+    const ctrl=h('div','race-ctrl');
+    const jb=h('button','rbtn alt','⬆️ קפיצה'); jb.addEventListener('pointerdown',e=>{ e.preventDefault(); raceJump(); });
+    const pw=me && me.power ? POWERS[me.power] : null;
+    const pb=h('button','rbtn'+(pw?'':' ghost'), pw ? pw.em+' '+pw.he : '— אין');
+    pb.disabled=!pw; pb.addEventListener('pointerdown',e=>{ e.preventDefault(); usePower(me); });
+    ctrl.append(jb,pb); card.appendChild(ctrl);
+    card.appendChild(h('div','hint','נגיעה במסך או ברווח: קפיצה מעל משוכות. קופסת ? נותנת כוח מיוחד. בבוץ רצים לאט.'));
+    return;
+  }
+  if(raceUI==='results' && raceResults){
+    card.appendChild(h('div','race-title', raceResults.order[0].isMe ? '🏆 ניצחת!' : '🏁 המירוץ הסתיים'));
+    const list=h('div','plist');
+    raceResults.order.forEach((r,i)=>{ const row=h('div','prow'+(r.isMe?' me':'')); row.append(h('span','pos',String(i+1)), petCanvas(r.species), h('span',null,r.name+(r.bot?' · מחשב':'')), h('span','tm', r.ms?fmtMs(r.ms):'לא סיים')); list.appendChild(row); });
+    card.appendChild(list);
+    card.appendChild(h('div','race-sub','היצור שלך עייף ורעב קצת אחרי המירוץ.'+(raceResults.mode==='multi'&&raceResults.order[0].isMe?' קיבלת 👑 כתר שכולם רואים ליד השם!':'')));
+    const b=h('div','rbtns');
+    const again=h('button','rbtn','🔁 עוד מירוץ'); again.onclick=()=>{ raceUI='lobby'; raceResults=null; race=null; renderRaceCard(); };
+    const back=h('button','rbtn ghost','🗺️ למפה'); back.onclick=()=>{ raceUI='lobby'; raceResults=null; race=null; setView('map'); };
+    b.append(again,back); card.appendChild(b); return;
+  }
+  // lobby / waiting
+  card.appendChild(h('div','race-title','🏁 מגרש המירוצים'));
+  if(!d){
+    card.appendChild(h('div','race-sub', myId && pets.get(myId) ? 'רק יצור שכבר בקע יכול להתחרות. חמם את הביצה בחדר הקינון!' : 'צריך קודם יצור משלך.'));
+    return;
+  }
+  const tr=raceTraits(statsOf(myId), d.species);
+  card.appendChild(h('div','race-sub','היתרון שהטיפול שלך נותן ל'+d.name+' עכשיו:'));
+  const chips=h('div','chips'); traitChips(tr).forEach(([k,v])=>{ const c=h('span','chip'); c.innerHTML='<span></span> <b></b>'; c.children[0].textContent=k; c.children[1].textContent=v; chips.appendChild(c); });
+  if(tr.sad) chips.appendChild(h('span','chip','😟 עצוב: מעט איטי יותר'));
+  card.appendChild(chips);
+  if(raceUI==='waiting'){
+    const ids=Object.keys(lobby); const host=lobbyHost(), amHost=host===myId;
+    card.appendChild(h('div','race-sub', ids.length<2 ? 'מחכים לעוד שחקן לפחות… שלח לחבר את הלינק!' : (amHost?'אתה המארח. אפשר להתחיל!':'מחכים שהמארח יתחיל את המירוץ…')));
+    const list=h('div','plist');
+    ids.slice(0,4).forEach(id=>{ const l=lobby[id]||{}; const row=h('div','prow'+(id===myId?' me':'')); row.append(petCanvas(l.species), h('span',null,(l.name||'?')+(l.owner?' · '+l.owner:'')), h('span','tm', id===host?'מארח':'')); list.appendChild(row); });
+    card.appendChild(list);
+    const b=h('div','rbtns');
+    const go=h('button','rbtn alt','▶️ התחל מירוץ'); go.disabled=!(amHost && ids.length>=2); go.onclick=hostStart;
+    const out=h('button','rbtn ghost','יציאה'); out.onclick=leaveLobby;
+    b.append(go,out); card.appendChild(b);
+    return;
+  }
+  const b=h('div','rbtns');
+  const solo=h('button','rbtn'); solo.innerHTML='🤖 מול המחשב<small>3 יריבים, מתחיל מיד</small>'; solo.onclick=startSolo;
+  const multi=h('button','rbtn alt'); const n=Object.keys(lobby).length; multi.innerHTML='👥 כולם נגד כולם<small></small>';
+  multi.querySelector('small').textContent = n ? n+' מחכים בלובי' : 'עד 4 שחקנים';
+  multi.disabled = mode!=='db'; multi.onclick=joinLobby;
+  b.append(solo,multi); card.appendChild(b);
+}
+setInterval(()=>{ if(race && race.posEl && race.state==='running'){ const me=race.runners.find(r=>r.isMe); const order=race.runners.slice().sort((a,b)=>(a.finishMs&&b.finishMs)?a.finishMs-b.finishMs:(b.finishMs?1:a.finishMs?-1:b.x-a.x)); race.posEl.textContent=(order.indexOf(me)+1)+'/'+race.runners.length; } }, 300);
+addEventListener('keydown', e=>{
+  if(view!=='race' || !race || race.state!=='running') return;
+  if(e.code==='Space' || e.code==='ArrowUp'){ e.preventDefault(); raceJump(); }
+  if(e.code==='KeyX' || e.code==='Enter'){ usePower(race.runners.find(r=>r.isMe)); }
+});
 
 // ---------- tags overlay ----------
 const tagsEl=document.getElementById('tags'); const tagEls=new Map();
@@ -768,7 +1206,7 @@ function rebuildTags(){
     const d=dataOf(id); if(!d) continue;
     const on=isOnline(id);
     el.classList.toggle('off', !on); el.classList.toggle('me', id===myId);
-    el.querySelector('.nm').textContent = d.name;
+    el.querySelector('.nm').textContent = (d.wins>0?'👑 ':'') + d.name;
     let own='';
     if(id===myId) own='· אתה';
     else if(bots.has(id)) own='· בוט';
@@ -792,12 +1230,14 @@ function frame(ts){
   const dt=Math.min(0.1,(ts-last)/1000); last=ts;
   const t=ts/1000;
   update(dt);
+  if(race) stepRace(dt);
   for(const e of ents.values()){ e.tagX=null; e.slot=null; }
   if(view==='map'){ F.mapStyle==='side' ? drawMapSide(t) : drawMapTop(t); }
   else if(view==='nest') drawNestRoom(t);
+  else if(view==='race') drawRace(t);
   else if(F.layout==='yard'){ drawYard(t); drawYardEnts(); }
   else drawBuilding(t);
-  placeTags(); placeMapLabels();
+  placeTags(); placeMapLabels(); placeRaceTags();
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
@@ -806,6 +1246,8 @@ cv.addEventListener('pointerdown', ev=>{
   if(view==='map'){
     const R=MAPR[F.mapStyle];
     for(const k in R){ const r=R[k]; if(x>=r.x && x<=r.x+r.w && y>=(F.mapStyle==='side'?40:r.y) && y<=r.y+r.h+(F.mapStyle==='side'?20:0)){ goPlace(k); return; } }
+  } else if(view==='race'){
+    if(race && race.state==='running') raceJump();
   } else if(view==='nest'){
     const e=ents.get(myId);
     if(e && e.slot && x>=e.slot.x && x<=e.slot.x+e.slot.w && y>=e.slot.y && y<=e.slot.y+e.slot.h+10) doWarm();
@@ -824,7 +1266,7 @@ Object.entries(ACTIONS).forEach(([k,a])=>{
 function fmt(ms){ const s=Math.ceil(ms/1000), m=(s/60)|0; return m+':'+String(s%60).padStart(2,'0'); }
 function renderHUD(){
   const d=myId && pets.get(myId);
-  $('meCard').style.display = d ? '' : 'none';
+  $('meCard').style.display = (d && view!=='race') ? '' : 'none';
   const cnt = 1 + [...online.keys()].filter(id=>id!==myId).length + [...bots.values()].filter(b=>b.online).length;
   $('onlinePill').innerHTML = `👥 <b>${cnt}</b>`; $('onlinePill').title = cnt+' מחוברים';
   if(!d) return;
@@ -980,9 +1422,10 @@ async function init(){
     if(roomOk) fb.onDisconnect(myStatus).remove().then(()=>setPresence({})).catch(()=>{});
   });
   fb.onValue(fb.ref(fb.db,'status'), snap=>onStatus(snap.val()||{}));
+  initRaceSync();
 }
 init();
-{ const h=(location.hash||'').slice(1); setView(['nest','yard'].includes(h)?h:'map'); }
+{ const h=(location.hash||'').slice(1); setView(['nest','yard','race'].includes(h)?h:'map'); }
 
 // ---------- onboarding ----------
 let chosen='cat';
